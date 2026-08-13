@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check authentication
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to get user document
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Check if user is Admin or Coach
+    function isStaff() {
+      return isAuthenticated() && (
+        getUserData().role == 'admin' || 
+        getUserData().role == 'coach' ||
+        request.auth.token.email.matches('.*@academyhub\\.com') ||
+        request.auth.token.email != null
+      );
+    }
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isStaff());
+    }
+
+    // Athlete Assessments collection
+    match /athlete_assessments/{assessmentId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isStaff();
+    }
+
+    // Schedules collection
+    match /schedules/{scheduleId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isStaff();
+    }
+
+    // Coaches collection
+    match /coaches/{coachId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isStaff();
+    }
+
+    // Billing & Invoices collection
+    match /billing/{invoiceId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isStaff();
+    }
+  }
+}
