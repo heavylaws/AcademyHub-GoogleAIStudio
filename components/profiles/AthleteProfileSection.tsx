@@ -83,12 +83,62 @@ const ATHLETES_REGISTRY: StudentAthleteMeta[] = [
 ];
 
 export default function AthleteProfileSection() {
+  const [athletesList, setAthletesList] = useState<StudentAthleteMeta[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('academyhub_athletes');
+      if (saved) {
+        try { return JSON.parse(saved); } catch {}
+      }
+    }
+    return ATHLETES_REGISTRY;
+  });
+
   const [selectedAthleteId, setSelectedAthleteId] = useState<string>('ath_8042');
   const [selectedSportTab, setSelectedSportTab] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'matrix' | 'analytics'>('matrix');
 
+  // Register Modal state
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newAge, setNewAge] = useState(13);
+  const [newParentName, setNewParentName] = useState('');
+  const [newParentEmail, setNewParentEmail] = useState('');
+  const [newEmergency, setNewEmergency] = useState('+1 (555) 999-0000');
+  const [newSports, setNewSports] = useState('Basketball, Track & Field');
+
   const activeAthlete =
-    ATHLETES_REGISTRY.find((a) => a.id === selectedAthleteId) || ATHLETES_REGISTRY[0];
+    athletesList.find((a) => a.id === selectedAthleteId) || athletesList[0] || ATHLETES_REGISTRY[0];
+
+  const handleRegisterAthlete = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim() || !newParentEmail.trim()) return;
+
+    const newId = `ath_${Date.now().toString().slice(-4)}`;
+    const sportsArr = newSports.split(',').map(s => s.trim()).filter(Boolean);
+
+    const newAthlete: StudentAthleteMeta = {
+      id: newId,
+      name: newName,
+      age: Number(newAge),
+      dob: `${2026 - Number(newAge)}-01-15`,
+      parentName: newParentName || 'Parent Guardian',
+      parentEmail: newParentEmail,
+      emergencyContact: newEmergency,
+      coppaConsent: true,
+      sportsEnrolled: sportsArr.length > 0 ? sportsArr : ['Basketball'],
+    };
+
+    const updated = [newAthlete, ...athletesList];
+    setAthletesList(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('academyhub_athletes', JSON.stringify(updated));
+    }
+
+    setSelectedAthleteId(newId);
+    setIsRegisterModalOpen(false);
+    setNewName('');
+    setNewParentEmail('');
+  };
 
   // Real-time Firestore onSnapshot subscription for the active athlete
   const {
@@ -138,7 +188,7 @@ export default function AthleteProfileSection() {
   return (
     <div className="space-y-6 transition-colors duration-200">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -154,9 +204,14 @@ export default function AthleteProfileSection() {
           </p>
         </div>
 
-        {/* Athlete Select Dropdown */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500 font-medium">Select Athlete:</span>
+        {/* Athlete Select Dropdown & Register Button */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setIsRegisterModalOpen(true)}
+            className="bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white text-xs font-bold px-3.5 py-1.5 h-11 min-h-[44px] rounded-xl shadow transition-all flex items-center gap-1.5"
+          >
+            <span>+ Register New Athlete</span>
+          </button>
           <select
             id="athlete-profile-select"
             value={selectedAthleteId}
@@ -164,9 +219,9 @@ export default function AthleteProfileSection() {
               setSelectedAthleteId(e.target.value);
               setSelectedSportTab('all');
             }}
-            className="bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+            className="bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-1.5 h-11 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
           >
-            {ATHLETES_REGISTRY.map((a) => (
+            {athletesList.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name} ({a.sportsEnrolled.join(', ')})
               </option>
@@ -174,6 +229,105 @@ export default function AthleteProfileSection() {
           </select>
         </div>
       </div>
+
+      {/* Register New Athlete Modal */}
+      {isRegisterModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 w-full max-w-md shadow-2xl space-y-4 mx-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white">Register New Student Athlete</h3>
+              <button
+                onClick={() => setIsRegisterModalOpen(false)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleRegisterAthlete} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Athlete Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g. Jordan Miller"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Age</label>
+                  <input
+                    type="number"
+                    required
+                    min={6}
+                    max={21}
+                    value={newAge}
+                    onChange={(e) => setNewAge(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Emergency Phone</label>
+                  <input
+                    type="text"
+                    value={newEmergency}
+                    onChange={(e) => setNewEmergency(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400 font-mono"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Parent Name</label>
+                <input
+                  type="text"
+                  value={newParentName}
+                  onChange={(e) => setNewParentName(e.target.value)}
+                  placeholder="e.g. Sarah Miller"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Parent Email (COPPA Link)</label>
+                <input
+                  type="email"
+                  required
+                  value={newParentEmail}
+                  onChange={(e) => setNewParentEmail(e.target.value)}
+                  placeholder="parent@gmail.com"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Enrolled Sports (comma separated)</label>
+                <input
+                  type="text"
+                  value={newSports}
+                  onChange={(e) => setNewSports(e.target.value)}
+                  placeholder="Basketball, Football, Badminton"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsRegisterModalOpen(false)}
+                  className="px-4 py-2 h-11 min-h-[44px] rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 h-11 min-h-[44px] rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 font-bold"
+                >
+                  Save Athlete
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Permission Denied Guard Notice if triggered */}
       {isPermissionDenied && (
@@ -189,7 +343,7 @@ export default function AthleteProfileSection() {
       )}
 
       {/* Unified Registration Detail Card */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+      <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-emerald-500 p-0.5 flex items-center justify-center text-slate-950 font-black text-xl shadow-md">
@@ -235,7 +389,7 @@ export default function AthleteProfileSection() {
             </span>
             <button
               onClick={() => setSelectedSportTab('all')}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3 py-1 h-11 min-h-[44px] rounded-lg text-xs font-semibold transition-all ${
                 selectedSportTab === 'all'
                   ? 'bg-cyan-600 text-white shadow-sm'
                   : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -247,7 +401,7 @@ export default function AthleteProfileSection() {
               <button
                 key={s}
                 onClick={() => setSelectedSportTab(s)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-3 py-1 h-11 min-h-[44px] rounded-lg text-xs font-semibold transition-all ${
                   selectedSportTab === s
                     ? 'bg-cyan-600 text-white shadow-sm'
                     : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -261,7 +415,7 @@ export default function AthleteProfileSection() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setViewMode(viewMode === 'matrix' ? 'analytics' : 'matrix')}
-              className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5"
+              className="px-3 py-1 h-11 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5"
             >
               {viewMode === 'matrix' ? (
                 <>
@@ -299,7 +453,7 @@ export default function AthleteProfileSection() {
           .map((sp) => (
             <div
               key={sp.sport}
-              className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm"
+              className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm"
             >
               {/* Sport Summary Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">

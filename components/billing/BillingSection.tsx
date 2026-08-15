@@ -26,6 +26,7 @@ interface FamilyInvoice {
 
 export default function BillingSection() {
   const [paymentSchedule, setPaymentSchedule] = useState<'upfront' | '2-part' | 'monthly'>('monthly');
+  const [selectedInvoiceModal, setSelectedInvoiceModal] = useState<FamilyInvoice | null>(null);
 
   // Pre-configured family registrations
   const [registeredChildren, setRegisteredChildren] = useState<ChildRegistration[]>([
@@ -174,7 +175,7 @@ export default function BillingSection() {
   return (
     <div className="space-y-6 transition-colors duration-200">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
           <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <CreditCard className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -191,9 +192,9 @@ export default function BillingSection() {
       </div>
 
       {/* Main Billing Calculator & Simulator Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Family Calculator Form */}
-        <div className="lg:col-span-1 p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-5 shadow-sm">
+        <div className="lg:col-span-1 p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-5 shadow-sm">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
             <DollarSign className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             Family Registration & Discount Engine
@@ -242,13 +243,13 @@ export default function BillingSection() {
                 placeholder="Child Name (e.g. Leo Vance)"
                 value={newChildName}
                 onChange={(e) => setNewChildName(e.target.value)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-amber-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-amber-500 min-h-[44px]"
               />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <select
                   value={newChildSport}
                   onChange={(e) => setNewChildSport(e.target.value)}
-                  className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-900 dark:text-slate-200"
+                  className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-900 dark:text-slate-200 min-h-[44px]"
                 >
                   <option value="Track & Field">Track ($220)</option>
                   <option value="Cricket">Cricket ($280)</option>
@@ -257,7 +258,7 @@ export default function BillingSection() {
                 </select>
                 <button
                   type="submit"
-                  className="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-lg text-xs py-1.5 transition-colors"
+                  className="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-lg text-xs py-1.5 transition-colors min-h-[44px]"
                 >
                   + Add Child
                 </button>
@@ -269,11 +270,11 @@ export default function BillingSection() {
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Payment Installment Schedule
               </label>
-              <div className="grid grid-cols-3 gap-1.5 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setPaymentSchedule('upfront')}
-                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all ${
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all min-h-[44px] ${
                     paymentSchedule === 'upfront'
                       ? 'bg-amber-500 text-slate-950 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -284,7 +285,7 @@ export default function BillingSection() {
                 <button
                   type="button"
                   onClick={() => setPaymentSchedule('2-part')}
-                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all ${
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all min-h-[44px] ${
                     paymentSchedule === '2-part'
                       ? 'bg-amber-500 text-slate-950 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -295,7 +296,7 @@ export default function BillingSection() {
                 <button
                   type="button"
                   onClick={() => setPaymentSchedule('monthly')}
-                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all ${
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all min-h-[44px] ${
                     paymentSchedule === 'monthly'
                       ? 'bg-amber-500 text-slate-950 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -332,7 +333,7 @@ export default function BillingSection() {
 
             <button
               onClick={handleIssueFamilyInvoice}
-              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-colors shadow-sm"
+              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-colors shadow-sm min-h-[44px]"
             >
               Issue Consolidated Invoice to Family
             </button>
@@ -342,7 +343,7 @@ export default function BillingSection() {
         {/* Live Consolidated Invoice Preview & Active Ledger */}
         <div className="lg:col-span-2 space-y-6">
           {/* Live Preview Card */}
-          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+          <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
@@ -399,7 +400,7 @@ export default function BillingSection() {
           </div>
 
           {/* Master Family Invoice History Ledger */}
-          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+          <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <span>Master Family Invoice Ledger</span>
               <span className="text-xs font-mono text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/20">
@@ -407,7 +408,7 @@ export default function BillingSection() {
               </span>
             </h3>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
                 <thead className="bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-mono uppercase text-[10px] border-b border-slate-200 dark:border-slate-800">
                   <tr>
@@ -418,6 +419,7 @@ export default function BillingSection() {
                     <th className="p-3">Net Total</th>
                     <th className="p-3">Schedule</th>
                     <th className="p-3">Status</th>
+                    <th className="p-3">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
@@ -448,6 +450,15 @@ export default function BillingSection() {
                           {inv.status}
                         </span>
                       </td>
+                      <td className="p-3">
+                        <button
+                          onClick={() => setSelectedInvoiceModal(inv)}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-cyan-500 hover:text-slate-950 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition-all border border-slate-300 dark:border-slate-700 flex items-center gap-1 min-h-[44px]"
+                        >
+                          <FileText className="w-3 h-3 text-cyan-500" />
+                          <span>View Invoice</span>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -456,6 +467,85 @@ export default function BillingSection() {
           </div>
         </div>
       </div>
+
+      {/* Official Printable Family Invoice Modal */}
+      {selectedInvoiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-white text-slate-900 border border-slate-300 rounded-2xl p-4 md:p-8 w-full max-w-screen-md shadow-2xl space-y-6 relative overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <div className="text-xl font-black tracking-tight text-slate-900">ACADEMYHUB ATHLETICS</div>
+                <div className="text-xs text-slate-500">Official Family Billing Receipt & Invoice Statement</div>
+              </div>
+              <div className="text-right font-mono text-xs">
+                <div className="font-bold text-cyan-600 text-sm">{selectedInvoiceModal.id}</div>
+                <div className="text-slate-500">Date: {selectedInvoiceModal.issuedDate}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div>
+                <div className="font-bold text-slate-500 uppercase font-mono text-[10px]">Billed Parent / Guardian</div>
+                <div className="font-bold text-sm text-slate-900 mt-0.5">{selectedInvoiceModal.parentName}</div>
+                <div className="text-slate-600 font-mono">{selectedInvoiceModal.parentEmail}</div>
+              </div>
+              <div className="text-right">
+                <div className="font-bold text-slate-500 uppercase font-mono text-[10px]">Payment Schedule</div>
+                <div className="font-bold text-slate-900 mt-0.5 capitalize">{selectedInvoiceModal.paymentSchedule} Installments</div>
+                <div className="text-emerald-600 font-bold font-mono">Status: {selectedInvoiceModal.status}</div>
+              </div>
+            </div>
+
+            {/* Line Items */}
+            <div className="space-y-2">
+              <div className="font-mono text-[10px] uppercase font-bold text-slate-500 border-b border-slate-200 pb-1 flex justify-between">
+                <span>Description / Enrolled Student</span>
+                <span>Amount</span>
+              </div>
+              {selectedInvoiceModal.children.map((child, idx) => (
+                <div key={idx} className="flex justify-between text-xs py-1">
+                  <span>{child.childName} — {child.sport} Monthly Tuition</span>
+                  <span className="font-mono font-bold">${child.monthlyFee}.00</span>
+                </div>
+              ))}
+              {selectedInvoiceModal.siblingDiscountAmount > 0 && (
+                <div className="flex justify-between text-xs py-1 text-emerald-600 font-bold border-t border-slate-100">
+                  <span>10% Sibling Discount ({selectedInvoiceModal.discountedChildName})</span>
+                  <span className="font-mono">-${selectedInvoiceModal.siblingDiscountAmount}.00</span>
+                </div>
+              )}
+            </div>
+
+            {/* Total Summary */}
+            <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-200">
+              <div className="flex justify-between text-xs text-slate-600">
+                <span>Gross Subtotal:</span>
+                <span className="font-mono">${selectedInvoiceModal.subtotal}.00</span>
+              </div>
+              <div className="flex justify-between text-sm font-black text-slate-900 border-t border-slate-200 pt-2">
+                <span>Net Total Payable:</span>
+                <span className="font-mono text-cyan-600">${selectedInvoiceModal.netTotal}.00</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setSelectedInvoiceModal(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 min-h-[44px]"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-2 shadow min-h-[44px]"
+              >
+                <span>🖨️ Print / Save Official PDF</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

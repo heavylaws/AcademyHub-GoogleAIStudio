@@ -369,7 +369,7 @@ export default function RapidAssessmentForm({
               type="button"
               onClick={handleToggleAIPipeline}
               title="Toggle NEXT_PUBLIC_ENABLE_AI_PIPELINE evaluation engine"
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all ${
+              className={`flex items-center gap-2 px-3 py-1.5 min-h-[44px] rounded-xl border text-xs font-mono font-bold transition-all ${
                 aiPipelineActive
                   ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30'
                   : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
@@ -421,7 +421,7 @@ export default function RapidAssessmentForm({
               id="rapid-athlete-select"
               value={selectedAthleteId}
               onChange={(e) => setSelectedAthleteId(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 font-semibold focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+              className="w-full h-11 bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 font-semibold focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
             >
               {DEFAULT_ATHLETES.map((athlete) => (
                 <option key={athlete.id} value={athlete.id}>
@@ -443,7 +443,7 @@ export default function RapidAssessmentForm({
                   key={sport}
                   type="button"
                   onClick={() => setSelectedSport(sport)}
-                  className={`py-2 px-1 rounded-xl text-center font-bold text-[11px] transition-all truncate ${
+                  className={`min-h-[44px] py-2 px-1 rounded-xl text-center font-bold text-[11px] transition-all truncate ${
                     selectedSport === sport
                       ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
                       : 'bg-slate-950/80 text-slate-300 hover:bg-slate-800 border border-slate-800'
@@ -468,7 +468,7 @@ export default function RapidAssessmentForm({
                 setSelectedExercise(e.target.value);
                 setSelectedFaults([]); // Reset faults for new drill
               }}
-              className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 font-semibold focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+              className="w-full h-11 bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 font-semibold focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
             >
               {EXERCISE_SOPS.map((sop) => (
                 <option key={sop} value={sop}>
@@ -559,7 +559,7 @@ export default function RapidAssessmentForm({
               id="rapid-log-next-button"
               type="button"
               onClick={handleResetForNext}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
+              className="w-full min-h-[44px] sm:w-auto px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
             >
               <Plus className="w-4 h-4" />
               Log Next Athlete Assessment
@@ -567,7 +567,7 @@ export default function RapidAssessmentForm({
             <button
               type="button"
               onClick={() => setSubmitSuccess(false)}
-              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs transition-colors"
+              className="w-full min-h-[44px] sm:w-auto px-5 py-3 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs transition-colors"
             >
               Edit This Record
             </button>
@@ -756,7 +756,7 @@ export default function RapidAssessmentForm({
                   max="100"
                   value={formQualityScore}
                   onChange={(e) => setFormQualityScore(Number(e.target.value))}
-                  className="w-full accent-emerald-500 bg-slate-200 dark:bg-slate-800 h-2 rounded-lg appearance-none cursor-pointer"
+                  className="w-full min-h-[44px] accent-emerald-500 bg-slate-200 dark:bg-slate-800 h-2 rounded-lg appearance-none cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] font-mono text-slate-500">
                   <span>0 (Severe Flaws)</span>
@@ -783,7 +783,7 @@ export default function RapidAssessmentForm({
                   max="100"
                   value={enduranceScore}
                   onChange={(e) => setEnduranceScore(Number(e.target.value))}
-                  className="w-full accent-cyan-500 bg-slate-200 dark:bg-slate-800 h-2 rounded-lg appearance-none cursor-pointer"
+                  className="w-full min-h-[44px] accent-cyan-500 bg-slate-200 dark:bg-slate-800 h-2 rounded-lg appearance-none cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] font-mono text-slate-500">
                   <span>0 (Rapid Fatigue)</span>
@@ -804,7 +804,7 @@ export default function RapidAssessmentForm({
                   <button
                     type="button"
                     onClick={() => setSelectedFaults([])}
-                    className="text-[10px] font-mono text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline"
+                    className="min-h-[44px] text-[10px] font-mono text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline"
                   >
                     Clear all ({selectedFaults.length})
                   </button>
@@ -819,7 +819,7 @@ export default function RapidAssessmentForm({
                       key={tag}
                       type="button"
                       onClick={() => toggleFault(tag)}
-                      className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-semibold font-mono transition-all flex items-center gap-1.5 active:scale-95 ${
+                      className={`min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-semibold font-mono transition-all flex items-center gap-1.5 active:scale-95 ${
                         isSelected
                           ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
                           : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800 hover:border-slate-400'
@@ -850,7 +850,7 @@ export default function RapidAssessmentForm({
               value={coachNotes}
               onChange={(e) => setCoachNotes(e.target.value)}
               placeholder="e.g., Kept great spinal alignment through first 8 reps. Slight elbow flare on final 2. Prescribed eccentric tempo..."
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl p-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
+              className="w-full min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl p-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
             />
           </div>
 
@@ -890,7 +890,7 @@ export default function RapidAssessmentForm({
                 <button
                   type="button"
                   onClick={removeAttachedFile}
-                  className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                  className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white"
                 >
                   <X className="w-4 h-4" />
                 </button>

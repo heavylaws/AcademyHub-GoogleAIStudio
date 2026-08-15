@@ -83,7 +83,7 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
   return (
     <div className="space-y-6 transition-colors duration-200">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
           <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -100,7 +100,7 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
       </div>
 
       {/* Quick Switch Profiles Bar */}
-      <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-3 shadow-sm">
+      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-3 shadow-sm">
         <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
           <UserCheck className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
           Quick Switch RBAC Test Accounts (Firebase Auth Preset Sessions)
@@ -112,7 +112,7 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
               <button
                 key={p.role}
                 onClick={() => handleQuickSwitch(p)}
-                className={`p-4 rounded-xl text-left border transition-all relative ${
+                className={`p-4 min-h-[44px] rounded-xl text-left border transition-all relative ${
                   isCurrent
                     ? 'bg-slate-100 dark:bg-slate-950 border-cyan-500 ring-2 ring-cyan-500/20'
                     : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -155,13 +155,13 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
       {/* Grid for Form & RBAC Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Custom Login Form */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+        <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
             <Key className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
             Firebase Authentication Gateway
           </h3>
 
-          <form onSubmit={handleManualSubmit} className="space-y-4 text-xs">
+          <form onSubmit={handleManualSubmit} className="max-w-md w-full mx-auto space-y-4 text-xs">
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Target Role
@@ -169,7 +169,7 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
               <select
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value as any)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 h-11 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
               >
                 <option value="admin">Admin (Executive & Financial Director)</option>
                 <option value="coach">Coach (Sports & Biomechanics Instructor)</option>
@@ -185,7 +185,7 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 h-11 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
                 required
               />
             </div>
@@ -199,13 +199,13 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 h-11 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200"
+                  className="absolute right-0 top-0 h-11 w-11 flex items-center justify-center text-slate-400 hover:text-slate-200"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -214,7 +214,7 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold py-2.5 rounded-xl transition-colors shadow-sm"
+              className="w-full bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold py-2.5 h-11 min-h-[44px] rounded-xl transition-colors shadow-sm"
             >
               Sign In & Obtain Role Token
             </button>
@@ -228,7 +228,7 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
         </div>
 
         {/* Data Access Matrix & Privacy Standards */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+        <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
             <Lock className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
             COPPA / CCPA / GDPR Privacy Permission Matrix

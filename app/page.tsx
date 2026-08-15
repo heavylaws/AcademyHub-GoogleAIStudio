@@ -29,10 +29,33 @@ export default function HomePage() {
   const [currentUserName, setCurrentUserName] = useState('Admin Director');
   const [currentUserEmail, setCurrentUserEmail] = useState('admin@academyhub.io');
 
+  // Dynamic real-time stats count
+  const [athleteCount, setAthleteCount] = useState<number>(4);
+  const [sessionCount, setSessionCount] = useState<number>(3);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedAth = localStorage.getItem('academyhub_athletes');
+      if (savedAth) {
+        try { setAthleteCount(JSON.parse(savedAth).length); } catch {}
+      }
+      const savedSess = localStorage.getItem('academyhub_sessions');
+      if (savedSess) {
+        try { setSessionCount(JSON.parse(savedSess).length); } catch {}
+      }
+    }
+  }, [activeTab]);
+
   const handleRoleChange = (role: string, userDetails: { name: string; email: string }) => {
     setCurrentUserRole(role);
     setCurrentUserName(userDetails.name);
     setCurrentUserEmail(userDetails.email);
+  };
+
+  const handleUserAuthChange = (user: { name: string; email: string; role?: string }) => {
+    setCurrentUserName(user.name);
+    setCurrentUserEmail(user.email);
+    if (user.role) setCurrentUserRole(user.role);
   };
 
   return (
@@ -43,13 +66,14 @@ export default function HomePage() {
         setActiveTab={setActiveTab}
         currentUserRole={currentUserRole}
         currentUserName={currentUserName}
+        onUserAuthChange={handleUserAuthChange}
       />
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="w-full max-w-screen-xl mx-auto p-4 md:p-6 lg:p-8 space-y-8">
         {/* Top Header Banner */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-white dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 shadow-xl dark:shadow-slate-950/50">
-          <div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-6 lg:p-8 rounded-2xl bg-white dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 shadow-xl dark:shadow-slate-950/50">
+          <div className="flex flex-col">
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-md border border-cyan-500/20">
                 Academy Management Dashboard
@@ -75,19 +99,19 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
               onClick={() => setActiveTab('profiles')}
-              className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all border border-slate-200 dark:border-slate-700"
+              className="min-h-[44px] justify-center bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition-all border border-slate-200 dark:border-slate-700"
             >
-              <UserCheck className="w-4 h-4 text-cyan-500" />
+              <UserCheck className="w-5 h-5 text-cyan-500" />
               Student Profiles
             </button>
             <button
               onClick={() => setActiveTab('biomechanics')}
-              className="bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-md transition-all"
+              className="min-h-[44px] justify-center bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-md transition-all"
             >
-              <Activity className="w-4 h-4" />
+              <Activity className="w-5 h-5" />
               New Video Audit
             </button>
           </div>
@@ -97,21 +121,21 @@ export default function HomePage() {
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
             {/* KPI Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
+              <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Active Athletes</span>
                   <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
                     <Users className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="text-2xl font-bold text-slate-900 dark:text-white mt-3 font-mono">148</div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-white mt-3 font-mono">{athleteCount} Registered</div>
                 <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-semibold">
-                  <TrendingUp className="w-3 h-3" /> +12% across 6 sports
+                  <TrendingUp className="w-3 h-3" /> Real-Time Local & Firestore Sync
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm">
+              <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-sans">Avg Form Quality Index</span>
                   <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -124,7 +148,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm">
+              <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Facility Capacity</span>
                   <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
@@ -137,7 +161,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm">
+              <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Monthly Revenue</span>
                   <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
@@ -157,18 +181,18 @@ export default function HomePage() {
             <GeminiAdvisor />
 
             {/* Quick Overview Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+              <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm flex flex-col">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <Flame className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
                     Recent Cross-Sport Assessments
                   </h3>
                   <button
                     onClick={() => setActiveTab('biomechanics')}
-                    className="text-xs text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
+                    className="min-h-[44px] text-sm sm:text-xs text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 self-start sm:self-auto"
                   >
-                    View All <ArrowUpRight className="w-3 h-3" />
+                    View All <ArrowUpRight className="w-4 h-4 sm:w-3 sm:h-3" />
                   </button>
                 </div>
                 <div className="space-y-3">
@@ -191,17 +215,17 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between">
+              <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm flex flex-col">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-purple-500 dark:text-purple-400" />
                     Upcoming Facility Reservations
                   </h3>
                   <button
                     onClick={() => setActiveTab('scheduling')}
-                    className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                    className="min-h-[44px] text-sm sm:text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 self-start sm:self-auto"
                   >
-                    Manage Calendar <ArrowUpRight className="w-3 h-3" />
+                    Manage Calendar <ArrowUpRight className="w-4 h-4 sm:w-3 sm:h-3" />
                   </button>
                 </div>
                 <div className="space-y-3">

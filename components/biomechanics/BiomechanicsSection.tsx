@@ -21,7 +21,8 @@ import {
   Smartphone,
   Gauge,
   TrendingUp,
-  BarChart2
+  BarChart2,
+  PlayCircle
 } from 'lucide-react';
 import {
   Assessment,
@@ -33,6 +34,7 @@ import {
 import { saveAssessmentToFirestore } from '@/lib/assessmentConverters';
 import RapidAssessmentForm from './RapidAssessmentForm';
 import LiveAssessmentDashboard from './LiveAssessmentDashboard';
+import ExerciseVideoModal from './ExerciseVideoModal';
 
 interface AthleteOption {
   id: string;
@@ -128,6 +130,10 @@ export default function BiomechanicsSection() {
 
   // Workflow Pipeline: 'manual' (default) vs 'ai_agentic'
   const [dataSource, setDataSource] = useState<DataSource>('manual');
+
+  // Exercise Video Guide Modal State
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState<boolean>(false);
+  const [selectedGuideId, setSelectedGuideId] = useState<string>('sprint_accel');
 
   // Quantitative Metrics
   const [validReps, setValidReps] = useState<number>(12);
@@ -298,12 +304,19 @@ export default function BiomechanicsSection() {
           </div>
         </div>
 
-        {/* View Mode Switcher: Rapid Entry vs Live Analytics & Radars vs Kinematics Studio */}
+        {/* View Mode Switcher: Rapid Entry vs Live Analytics & Kinematics Studio + Video Guide */}
         <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 self-start md:self-auto">
+          <button
+            onClick={() => setIsVideoModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md transition-all border border-purple-400/30"
+          >
+            <PlayCircle className="w-4 h-4 text-cyan-300 animate-pulse" />
+            <span>Exercise Video Guide</span>
+          </button>
           <button
             id="view-rapid-entry-tab"
             onClick={() => setActiveView('rapid')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-bold transition-all ${
               activeView === 'rapid'
                 ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -319,7 +332,7 @@ export default function BiomechanicsSection() {
           <button
             id="view-analytics-tab"
             onClick={() => setActiveView('analytics')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-bold transition-all ${
               activeView === 'analytics'
                 ? 'bg-emerald-600 text-white shadow-md font-black'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -335,7 +348,7 @@ export default function BiomechanicsSection() {
           <button
             id="view-studio-tab"
             onClick={() => setActiveView('studio')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-bold transition-all ${
               activeView === 'studio'
                 ? 'bg-purple-600 text-white shadow-md font-black'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -402,7 +415,7 @@ export default function BiomechanicsSection() {
             <select
               value={selectedSport}
               onChange={(e) => handleSportChange(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
+              className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
             >
               {Object.keys(sportsConfig).map((sp) => (
                 <option key={sp} value={sp}>{sp}</option>
@@ -417,7 +430,7 @@ export default function BiomechanicsSection() {
             <select
               value={selectedExercise}
               onChange={(e) => setSelectedExercise(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
+              className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
             >
               {currentSportConfig.exercises.map((ex) => (
                 <option key={ex} value={ex}>{ex}</option>
@@ -432,7 +445,7 @@ export default function BiomechanicsSection() {
             <select
               value={selectedSOP}
               onChange={(e) => setSelectedSOP(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
+              className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
             >
               {currentSportConfig.sops.map((sop) => (
                 <option key={sop} value={sop}>{sop}</option>
@@ -447,7 +460,7 @@ export default function BiomechanicsSection() {
             <select
               value={selectedAthlete}
               onChange={(e) => setSelectedAthlete(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
+              className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
             >
               {sampleAthletes.map((ath) => (
                 <option key={ath.id} value={ath.id}>{ath.name} ({ath.parentEmail})</option>
@@ -506,7 +519,7 @@ export default function BiomechanicsSection() {
                   max="35"
                   value={validReps}
                   onChange={(e) => setValidReps(Number(e.target.value))}
-                  className="w-full accent-cyan-500 bg-slate-200 dark:bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
+                  className="w-full min-h-[44px] accent-cyan-500 bg-slate-200 dark:bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
                 />
                 <span className="text-[10px] text-slate-500">Target Standard: 12-15 reps/set</span>
               </div>
@@ -525,7 +538,7 @@ export default function BiomechanicsSection() {
                   step="5"
                   value={durationSeconds}
                   onChange={(e) => setDurationSeconds(Number(e.target.value))}
-                  className="w-full accent-cyan-500 bg-slate-200 dark:bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
+                  className="w-full min-h-[44px] accent-cyan-500 bg-slate-200 dark:bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
                 />
                 <span className="text-[10px] text-slate-500">Pacing: {Math.round((validReps / (durationSeconds / 60)) * 10) / 10} reps/min</span>
               </div>
@@ -541,7 +554,7 @@ export default function BiomechanicsSection() {
                   max="180"
                   value={avgDepthAngle}
                   onChange={(e) => setAvgDepthAngle(Number(e.target.value))}
-                  className="w-full accent-purple-500 bg-slate-200 dark:bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
+                  className="w-full min-h-[44px] accent-purple-500 bg-slate-200 dark:bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
                 />
                 <span className="text-[10px] text-slate-500">Optimal Target: ~{currentSportConfig.defaultKnee}°</span>
               </div>
@@ -567,7 +580,7 @@ export default function BiomechanicsSection() {
                   max="100"
                   value={formQualityScore}
                   onChange={(e) => setFormQualityScore(Number(e.target.value))}
-                  className="w-full accent-emerald-500 bg-slate-200 dark:bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
+                  className="w-full min-h-[44px] accent-emerald-500 bg-slate-200 dark:bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
                 />
                 <p className="text-[10px] text-slate-500">Kinematic precision, spinal neutrality & limb symmetry.</p>
               </div>
@@ -583,7 +596,7 @@ export default function BiomechanicsSection() {
                   max="100"
                   value={enduranceScore}
                   onChange={(e) => setEnduranceScore(Number(e.target.value))}
-                  className="w-full accent-cyan-500 bg-slate-200 dark:bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
+                  className="w-full min-h-[44px] accent-cyan-500 bg-slate-200 dark:bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
                 />
                 <p className="text-[10px] text-slate-500">Lactate resistance, power maintenance across final third.</p>
               </div>
@@ -603,7 +616,7 @@ export default function BiomechanicsSection() {
                       key={fault}
                       type="button"
                       onClick={() => toggleFaultTag(fault)}
-                      className={`px-3 py-1 rounded-lg text-xs font-mono font-semibold transition-all flex items-center gap-1.5 ${
+                      className={`min-h-[44px] px-3 py-1 rounded-lg text-xs font-mono font-semibold transition-all flex items-center gap-1.5 ${
                         isSelected
                           ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40 shadow-sm'
                           : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800 hover:border-slate-400'
@@ -627,7 +640,7 @@ export default function BiomechanicsSection() {
                 onChange={(e) => setCoachNotes(e.target.value)}
                 rows={2}
                 placeholder="Enter qualitative notes for athlete development..."
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-sans text-xs"
+                className="w-full min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-sans text-xs"
               />
             </div>
           </div>
@@ -694,7 +707,7 @@ export default function BiomechanicsSection() {
                 value={videoStoragePath}
                 onChange={(e) => setVideoStoragePath(e.target.value)}
                 placeholder="Cloud Storage video path..."
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-[11px] focus:outline-none focus:border-cyan-500"
+                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-[11px] focus:outline-none focus:border-cyan-500"
               />
 
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
@@ -702,7 +715,7 @@ export default function BiomechanicsSection() {
                 <button
                   type="button"
                   onClick={() => setSmartGridProcessed(!smartGridProcessed)}
-                  className={`px-3 py-1 rounded-lg font-mono text-[10px] font-bold transition-all ${
+                  className={`min-h-[44px] px-3 py-1 rounded-lg font-mono text-[10px] font-bold transition-all ${
                     smartGridProcessed
                       ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40'
                       : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
@@ -717,7 +730,7 @@ export default function BiomechanicsSection() {
             <button
               onClick={handleSaveAssessment}
               disabled={isIngesting}
-              className="w-full bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
+              className="w-full min-h-[44px] bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
             >
               {isIngesting ? (
                 <>Saving Assessment to Firestore...</>
@@ -779,6 +792,12 @@ export default function BiomechanicsSection() {
       </div>
       </div>
       )}
+      {/* Exercise Instructional Video & Biomechanics Guide Modal */}
+      <ExerciseVideoModal
+        exerciseId={selectedGuideId}
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+      />
     </div>
   );
 }

@@ -17,25 +17,14 @@ export default function GeminiAdvisor() {
     setResponse(null);
 
     try {
-      const res = await fetch('/app/api/gemini', {
+      const res = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, context }),
       });
 
-      if (!res.ok) {
-        // Fallback endpoint if needed
-        const res2 = await fetch('/api/gemini', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, context }),
-        });
-        const data = await res2.json();
-        setResponse(data.text || data.error);
-      } else {
-        const data = await res.json();
-        setResponse(data.text || data.error);
-      }
+      const data = await res.json();
+      setResponse(data.text || data.error);
     } catch (err: any) {
       setResponse('Kinematic Advisory: Maintain a neutral spine during peak eccentric deceleration. Increase knee flexion angle to 105° on landing to distribute ground reaction force efficiently.');
     } finally {

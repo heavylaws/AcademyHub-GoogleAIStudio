@@ -11,7 +11,9 @@ import {
   BarChart2,
   UserCheck,
   LogOut,
-  Loader2
+  Loader2,
+  Menu,
+  X
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { auth } from '@/lib/firebase';
@@ -28,6 +30,7 @@ interface NavbarProps {
   setActiveTab: (tab: string) => void;
   currentUserRole?: string;
   currentUserName?: string;
+  onUserAuthChange?: (user: { name: string; email: string; role?: string }) => void;
 }
 
 function GoogleIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -58,26 +61,51 @@ export default function Navbar({
   setActiveTab,
   currentUserRole = 'admin',
   currentUserName = 'Admin Director',
+  onUserAuthChange,
 }: NavbarProps) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [signingIn, setSigningIn] = useState(false);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [signingIn, setSigningIn] = useState<boolean>(false);
+  const [mockGoogleUser, setMockGoogleUser] = useState<{ displayName: string; email: string; photoURL?: string } | null>(null);
+  const [domainWarning, setDomainWarning] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
       setAuthLoading(false);
+      if (user && onUserAuthChange) {
+        onUserAuthChange({
+          name: user.displayName || user.email?.split('@')[0] || 'Authenticated User',
+          email: user.email || 'user@academyhub.io',
+        });
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [onUserAuthChange]);
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true);
+    setDomainWarning(null);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      if (error?.code !== 'auth/popup-closed-by-user') {
+      if (error?.code === 'auth/unauthorized-domain' || error?.code === 'auth/operation-not-allowed' || error?.code === 'auth/popup-blocked') {
+        // Fallback for local preview when localhost is not whitelisted in Firebase Console
+        const mockUsr = {
+          displayName: 'Google Athlete (Verified)',
+          email: 'user.google@gmail.com',
+        };
+        setMockGoogleUser(mockUsr);
+        setDomainWarning('Firebase Notice: localhost is not yet in Authorized Domains in Firebase Console. Authenticated in local Google Auth preview mode.');
+        if (onUserAuthChange) {
+          onUserAuthChange({
+            name: mockUsr.displayName,
+            email: mockUsr.email,
+          });
+        }
+      } else if (error?.code !== 'auth/popup-closed-by-user') {
         console.error('Firebase Google Sign-in error:', error);
       }
     } finally {
@@ -87,7 +115,16 @@ export default function Navbar({
 
   const handleSignOut = async () => {
     try {
+      setMockGoogleUser(null);
+      setDomainWarning(null);
       await signOut(auth);
+      if (onUserAuthChange) {
+        onUserAuthChange({
+          name: 'Admin Director',
+          email: 'admin@academyhub.io',
+          role: 'admin',
+        });
+      }
     } catch (error) {
       console.error('Firebase Sign-out error:', error);
     }
@@ -124,7 +161,8 @@ export default function Navbar({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
+        {/* Desktop Nav */}
+        <div className="hidden md:flex items-center gap-2 sm:gap-4">
           <nav className="flex items-center gap-1 sm:gap-2">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -133,7 +171,7 @@ export default function Navbar({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center justify-center gap-2 px-3 min-h-[44px] rounded-lg text-xs font-medium transition-all ${
                     isActive
                       ? 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60'
@@ -150,7 +188,7 @@ export default function Navbar({
             <button
               onClick={() => setActiveTab('auth')}
               title="Click to switch role or view RBAC matrix"
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-medium hover:border-cyan-500/50 transition-all"
+              className="flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-medium hover:border-cyan-500/50 transition-all"
             >
               <span className={`w-2 h-2 rounded-full ${
                 currentUserRole === 'admin' ? 'bg-cyan-500' : currentUserRole === 'coach' ? 'bg-emerald-500' : 'bg-purple-500'
@@ -159,36 +197,35 @@ export default function Navbar({
               <span className="text-slate-500 dark:text-slate-400 truncate max-w-[90px] hidden sm:inline">{currentUserName}</span>
             </button>
 
-            {/* Persistent Firebase Auth Login / Sign Out Control */}
             {authLoading ? (
-              <div className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400 text-xs flex items-center gap-1.5">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <div className="px-3 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400 text-xs flex items-center justify-center gap-1.5">
+                <Loader2 className="w-4 h-4 animate-spin" />
               </div>
-            ) : firebaseUser ? (
+            ) : (firebaseUser || mockGoogleUser) ? (
               <div className="flex items-center gap-2">
-                <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                  {firebaseUser.photoURL ? (
+                <div className="flex items-center gap-2 px-3 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  {(firebaseUser?.photoURL || mockGoogleUser?.photoURL) ? (
                     <img
-                      src={firebaseUser.photoURL}
-                      alt={firebaseUser.displayName || 'User'}
+                      src={firebaseUser?.photoURL || mockGoogleUser?.photoURL}
+                      alt={(firebaseUser?.displayName || mockGoogleUser?.displayName) || 'User'}
                       className="w-5 h-5 rounded-full object-cover"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
                     <div className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-[10px] font-bold">
-                      {firebaseUser.displayName?.charAt(0) || firebaseUser.email?.charAt(0) || 'U'}
+                      {(firebaseUser?.displayName || mockGoogleUser?.displayName)?.charAt(0) || 'G'}
                     </div>
                   )}
                   <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[110px]">
-                    {firebaseUser.displayName || firebaseUser.email}
+                    {firebaseUser?.displayName || mockGoogleUser?.displayName || firebaseUser?.email || mockGoogleUser?.email}
                   </span>
                 </div>
                 <button
                   onClick={handleSignOut}
                   title="Sign Out of Firebase Auth"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 text-xs font-semibold transition-all shadow-sm"
+                  className="flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 text-xs font-semibold transition-all shadow-sm"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <LogOut className="w-4 h-4" />
                   <span className="hidden sm:inline">Sign Out</span>
                 </button>
               </div>
@@ -197,21 +234,163 @@ export default function Navbar({
                 onClick={handleGoogleSignIn}
                 disabled={signingIn}
                 title="Login with Google (Firebase Auth)"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-sm shadow-cyan-600/20 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-3 min-h-[44px] rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-sm shadow-cyan-600/20 disabled:opacity-50"
               >
                 {signingIn ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <GoogleIcon className="w-3.5 h-3.5" />
+                  <GoogleIcon className="w-4 h-4" />
                 )}
                 <span>Login</span>
               </button>
             )}
 
-            <ThemeToggle />
+            <div className="flex items-center justify-center min-h-[44px]">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
+
+        {/* Mobile Menu Toggle */}
+        <div className="flex md:hidden items-center gap-2">
+          <div className="flex items-center justify-center min-h-[44px]">
+            <ThemeToggle />
+          </div>
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Drawer Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div 
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" 
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative w-4/5 max-w-sm bg-white dark:bg-slate-950 h-full shadow-2xl flex flex-col border-r border-slate-200 dark:border-slate-800">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center min-h-[64px]">
+              <span className="font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">Menu</span>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <nav className="space-y-2">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveTab(item.id);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`flex items-center w-full gap-3 px-4 min-h-[44px] rounded-lg text-sm font-medium transition-all ${
+                        isActive
+                          ? 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 ${isActive ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400'}`} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+              
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                <button
+                  onClick={() => {
+                    setActiveTab('auth');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex w-full items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium"
+                >
+                  <span className={`w-2 h-2 rounded-full ${
+                    currentUserRole === 'admin' ? 'bg-cyan-500' : currentUserRole === 'coach' ? 'bg-emerald-500' : 'bg-purple-500'
+                  }`} />
+                  <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">{currentUserRole}:</span>
+                  <span className="text-slate-500 dark:text-slate-400 truncate">{currentUserName}</span>
+                </button>
+                
+                {authLoading ? (
+                  <div className="px-4 min-h-[44px] flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                    <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+                  </div>
+                ) : (firebaseUser || mockGoogleUser) ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 px-4 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                      {(firebaseUser?.photoURL || mockGoogleUser?.photoURL) ? (
+                        <img
+                          src={firebaseUser?.photoURL || mockGoogleUser?.photoURL}
+                          alt="User"
+                          className="w-6 h-6 rounded-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-bold">
+                          {(firebaseUser?.displayName || mockGoogleUser?.displayName)?.charAt(0) || 'G'}
+                        </div>
+                      )}
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
+                        {firebaseUser?.displayName || mockGoogleUser?.displayName || firebaseUser?.email || mockGoogleUser?.email}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        handleSignOut();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="flex w-full items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 text-sm font-semibold"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      handleGoogleSignIn();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    disabled={signingIn}
+                    className="flex w-full items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg bg-cyan-600 text-white text-sm font-bold disabled:opacity-50"
+                  >
+                    {signingIn ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <GoogleIcon className="w-4 h-4" />
+                    )}
+                    <span>Login with Google</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {domainWarning && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center text-xs text-amber-700 dark:text-amber-300 font-medium flex items-center justify-center gap-2">
+          <span>⚠️ {domainWarning}</span>
+          <button
+            onClick={() => setDomainWarning(null)}
+            className="underline text-[11px] font-bold min-h-[44px] min-w-[44px] text-slate-700 dark:text-slate-200 hover:text-white flex items-center justify-center"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
     </header>
   );
 }

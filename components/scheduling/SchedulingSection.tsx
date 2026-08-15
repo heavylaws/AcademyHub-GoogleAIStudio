@@ -25,11 +25,19 @@ interface CoachMetrics {
 }
 
 export default function SchedulingSection() {
-  const [sessions, setSessions] = useState<Session[]>([
-    { id: '1', title: 'High-Velocity Plyometrics', facility: 'Main Court A', coach: 'Coach Davis', sport: 'Basketball', time: '14:00 - 15:30', maxCapacity: 20, enrolledCount: 18 },
-    { id: '2', title: 'Sprint Acceleration & Stride', facility: 'Track Strip 1', coach: 'Coach Taylor', sport: 'Track & Field', time: '16:00 - 17:00', maxCapacity: 15, enrolledCount: 14 },
-    { id: '3', title: 'Lateral Agility & Direction Change', facility: 'Turf Bay 2', coach: 'Coach Morgan', sport: 'Football (Soccer)', time: '17:30 - 19:00', maxCapacity: 18, enrolledCount: 16 }
-  ]);
+  const [sessions, setSessions] = useState<Session[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('academyhub_sessions');
+      if (saved) {
+        try { return JSON.parse(saved); } catch {}
+      }
+    }
+    return [
+      { id: '1', title: 'High-Velocity Plyometrics', facility: 'Main Court A', coach: 'Coach Davis', sport: 'Basketball', time: '14:00 - 15:30', maxCapacity: 20, enrolledCount: 18 },
+      { id: '2', title: 'Sprint Acceleration & Stride', facility: 'Track Strip 1', coach: 'Coach Taylor', sport: 'Track & Field', time: '16:00 - 17:00', maxCapacity: 15, enrolledCount: 14 },
+      { id: '3', title: 'Lateral Agility & Direction Change', facility: 'Turf Bay 2', coach: 'Coach Morgan', sport: 'Football (Soccer)', time: '17:30 - 19:00', maxCapacity: 18, enrolledCount: 16 }
+    ];
+  });
 
   const coachMetricsList: CoachMetrics[] = [
     { id: 'c1', name: 'Coach Davis', sports: ['Basketball', 'Track & Field'], attendanceRate: 96.4, churnRisk: 'Low', retentionScore: 94.2, batchFillRate: 90.0 },
@@ -78,7 +86,12 @@ export default function SchedulingSection() {
       enrolledCount: 12,
     };
 
-    setSessions([...sessions, newSess]);
+    const updated = [...sessions, newSess];
+    setSessions(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('academyhub_sessions', JSON.stringify(updated));
+    }
+
     setSuccessMsg(`Session "${title}" successfully scheduled on ${facility} with ${coach}!`);
     setTitle('');
   };
@@ -86,7 +99,7 @@ export default function SchedulingSection() {
   return (
     <div className="space-y-6 transition-colors duration-200">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
           <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -103,7 +116,7 @@ export default function SchedulingSection() {
       </div>
 
       {/* COACH PERFORMANCE DASHBOARD */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+      <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
@@ -114,7 +127,7 @@ export default function SchedulingSection() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {coachMetricsList.map((c) => (
             <div key={c.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
@@ -151,9 +164,9 @@ export default function SchedulingSection() {
       </div>
 
       {/* Booking Form & Schedule Calendar Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Reservation Booking Form */}
-        <div className="lg:col-span-1 p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+        <div className="md:col-span-1 lg:col-span-1 p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
             <Plus className="w-4 h-4 text-purple-600 dark:text-purple-400" />
             Book Court / Facility Reservation
@@ -167,7 +180,7 @@ export default function SchedulingSection() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Explosive Jump & Smash Clinic"
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500"
+                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500"
                 required
               />
             </div>
@@ -177,7 +190,7 @@ export default function SchedulingSection() {
               <select
                 value={facility}
                 onChange={(e) => setFacility(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-semibold"
+                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-semibold"
               >
                 <option value="Main Court A">Main Court A</option>
                 <option value="Main Court B">Main Court B</option>
@@ -192,7 +205,7 @@ export default function SchedulingSection() {
               <select
                 value={coach}
                 onChange={(e) => setCoach(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-semibold"
+                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-semibold"
               >
                 <option value="Coach Davis">Coach Davis (Basketball & Plyometrics)</option>
                 <option value="Coach Taylor">Coach Taylor (Sprint & Athletics)</option>
@@ -205,7 +218,7 @@ export default function SchedulingSection() {
               <select
                 value={sport}
                 onChange={(e) => setSport(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-semibold"
+                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-semibold"
               >
                 <option value="Basketball">Basketball</option>
                 <option value="Track & Field">Track & Field</option>
@@ -220,7 +233,7 @@ export default function SchedulingSection() {
               <select
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-mono font-semibold"
+                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-mono font-semibold"
               >
                 <option value="14:00 - 15:30">14:00 - 15:30</option>
                 <option value="16:00 - 17:00">16:00 - 17:00</option>
@@ -246,7 +259,7 @@ export default function SchedulingSection() {
 
             <button
               type="submit"
-              className="w-full bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 text-white dark:text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 shadow-sm"
+              className="w-full h-11 bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 text-white dark:text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 shadow-sm"
             >
               Check Conflicts & Schedule Session
             </button>
@@ -254,8 +267,8 @@ export default function SchedulingSection() {
         </div>
 
         {/* Calendar Sessions Grid */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+        <div className="md:col-span-1 lg:col-span-2 space-y-4">
+          <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                 Active Court Reservations & Facility Master Schedule
@@ -265,7 +278,8 @@ export default function SchedulingSection() {
               </span>
             </div>
 
-            <div className="space-y-3">
+            <div className="overflow-x-auto w-full">
+              <div className="space-y-3">
               {sessions.map((sess) => {
                 const fillPct = Math.round((sess.enrolledCount / sess.maxCapacity) * 100);
                 return (
@@ -308,6 +322,7 @@ export default function SchedulingSection() {
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
         </div>
