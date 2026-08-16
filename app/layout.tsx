@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { AuthProvider } from '@/lib/authContext';
 
 export const metadata: Metadata = {
   title: 'AcademyHub - Athletic Biomechanics & Performance Platform',
@@ -22,7 +23,9 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased transition-colors duration-200" suppressHydrationWarning>
         <ThemeProvider>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

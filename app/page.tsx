@@ -8,6 +8,7 @@ import SchedulingSection from '@/components/scheduling/SchedulingSection';
 import BillingSection from '@/components/billing/BillingSection';
 import AuthSection from '@/components/auth/AuthSection';
 import AthleteProfileSection from '@/components/profiles/AthleteProfileSection';
+import { useAuth } from '@/lib/authContext';
 import {
   Activity,
   Users,
@@ -25,9 +26,7 @@ import {
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [currentUserRole, setCurrentUserRole] = useState('admin');
-  const [currentUserName, setCurrentUserName] = useState('Admin Director');
-  const [currentUserEmail, setCurrentUserEmail] = useState('admin@academyhub.io');
+  const { user, role } = useAuth();
 
   // Dynamic real-time stats count
   const [athleteCount, setAthleteCount] = useState<number>(4);
@@ -46,17 +45,8 @@ export default function HomePage() {
     }
   }, [activeTab]);
 
-  const handleRoleChange = (role: string, userDetails: { name: string; email: string }) => {
-    setCurrentUserRole(role);
-    setCurrentUserName(userDetails.name);
-    setCurrentUserEmail(userDetails.email);
-  };
-
-  const handleUserAuthChange = (user: { name: string; email: string; role?: string }) => {
-    setCurrentUserName(user.name);
-    setCurrentUserEmail(user.email);
-    if (user.role) setCurrentUserRole(user.role);
-  };
+  const currentRole = role || (user ? 'Authenticated' : 'Guest');
+  const currentUserName = user?.displayName || user?.email?.split('@')[0] || (user ? 'User' : 'Guest');
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950 transition-colors duration-200">
@@ -64,9 +54,6 @@ export default function HomePage() {
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        currentUserRole={currentUserRole}
-        currentUserName={currentUserName}
-        onUserAuthChange={handleUserAuthChange}
       />
 
       {/* Main Container */}
@@ -79,16 +66,22 @@ export default function HomePage() {
                 Academy Management Dashboard
               </span>
               <span className={`text-xs font-mono font-bold uppercase px-2 py-0.5 rounded-md border ${
-                currentUserRole === 'admin'
+                role === 'admin'
                   ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
-                  : currentUserRole === 'coach'
+                  : role === 'coach'
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                  : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+                  : role === 'parent'
+                  ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+                  : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20'
               }`}>
-                Role: {currentUserRole} ({currentUserName})
+                Role: {currentRole} ({currentUserName})
               </span>
-              <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Live
+              <span className={`text-xs font-mono px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                user
+                  ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                  : 'text-slate-500 dark:text-slate-400 bg-slate-500/10 border-slate-500/20'
+              }`}>
+                <CheckCircle2 className="w-3 h-3" /> {user ? 'Live' : 'Guest'}
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -169,7 +162,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="text-2xl font-bold text-slate-900 dark:text-white mt-3 font-mono">
-                  {currentUserRole === 'coach' ? '🔒 Restricted' : '$24,850'}
+                  {role === 'coach' ? '🔒 Restricted' : '$24,850'}
                 </div>
                 <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-semibold">
                   <Award className="w-3 h-3" /> 10% Sibling rule applied
@@ -255,7 +248,7 @@ export default function HomePage() {
         {activeTab === 'biomechanics' && <BiomechanicsSection />}
         {activeTab === 'scheduling' && <SchedulingSection />}
         {activeTab === 'billing' && <BillingSection />}
-        {activeTab === 'auth' && <AuthSection currentRole={currentUserRole} onRoleChange={handleRoleChange} />}
+        {activeTab === 'auth' && <AuthSection />}
       </main>
     </div>
   );

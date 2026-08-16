@@ -1,82 +1,98 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, FileText, UserCheck, Key, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  ShieldCheck,
+  Lock,
+  FileText,
+  UserCheck,
+  Key,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  LogOut
+} from 'lucide-react';
+import { useAuth } from '@/lib/authContext';
 
-interface AuthSectionProps {
-  currentRole?: string;
-  onRoleChange?: (role: string, userDetails: { name: string; email: string; childrenIds?: string[] }) => void;
-}
+export default function AuthSection() {
+  const { user, role, loading: authLoading, signIn, signOut } = useAuth();
 
-export default function AuthSection({ currentRole = 'admin', onRoleChange }: AuthSectionProps) {
-  const [selectedRole, setSelectedRole] = useState<'admin' | 'coach' | 'parent'>(
-    (currentRole as 'admin' | 'coach' | 'parent') || 'admin'
-  );
-  const [email, setEmail] = useState('admin@academyhub.io');
-  const [password, setPassword] = useState('••••••••••••');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [signedInUser, setSignedInUser] = useState({
-    name: 'Admin Director',
-    email: 'admin@academyhub.io',
-    role: 'admin',
-    childrenIds: [] as string[],
-  });
-  const [authSuccessMsg, setAuthSuccessMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const isDev = process.env.NODE_ENV !== 'production';
 
   const presetAccounts = [
     {
       role: 'admin' as const,
       name: 'Admin Director (Academy Executive)',
       email: 'admin@academyhub.io',
+      password: 'password123',
       color: 'cyan',
       description: 'Full system access: Financial Ledger, Coach Analytics, COPPA Data Governance & Facility Reservations.',
-      childrenIds: [],
     },
     {
       role: 'coach' as const,
       name: 'Coach Davis (Head Basketball & Plyometrics)',
       email: 'coach.davis@academyhub.io',
+      password: 'password123',
       color: 'emerald',
       description: 'Coaching scope: Video Ingestion, Motion Kinematics, Class Rosters & Court Scheduling. Restricted from Financials.',
-      childrenIds: [],
     },
     {
       role: 'parent' as const,
       name: 'Robert Vance (Parent of Marcus & Sarah)',
       email: 'robert.vance@gmail.com',
+      password: 'password123',
       color: 'purple',
       description: 'Parent scope: Strictly linked youth profiles (Marcus Vance, Sarah Vance), COPPA Consent & Family Billing Invoices.',
-      childrenIds: ['ath_8042', 'ath_8043'],
     },
   ];
 
-  const handleQuickSwitch = (preset: typeof presetAccounts[0]) => {
-    setSelectedRole(preset.role);
+  const handlePresetSelect = (preset: typeof presetAccounts[0]) => {
     setEmail(preset.email);
-    setSignedInUser({
-      name: preset.name,
-      email: preset.email,
-      role: preset.role,
-      childrenIds: preset.childrenIds,
-    });
-    setAuthSuccessMsg(`Authenticated as ${preset.name} [Role: ${preset.role.toUpperCase()}]`);
-    if (onRoleChange) {
-      onRoleChange(preset.role, { name: preset.name, email: preset.email, childrenIds: preset.childrenIds });
+    setPassword(preset.password);
+    setErrorMessage(null);
+    setSuccessMessage(`Loaded ${preset.role.toUpperCase()} credentials into form. Click "Sign In with Firebase Auth" to authenticate.`);
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      await signIn(email, password);
+      setSuccessMessage(`Successfully signed in as ${email}`);
+    } catch (err: any) {
+      console.error('Firebase Auth sign-in error:', err);
+      if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/user-not-found' || err?.code === 'auth/wrong-password') {
+        setErrorMessage('Invalid email or password. Please verify your credentials.');
+      } else if (err?.code === 'auth/too-many-requests') {
+        setErrorMessage('Access temporarily blocked due to many failed attempts. Try again later.');
+      } else {
+        setErrorMessage(err?.message || 'Authentication failed.');
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const preset = presetAccounts.find(p => p.role === selectedRole) || presetAccounts[0];
-    setSignedInUser({
-      name: preset.name,
-      email: email,
-      role: selectedRole,
-      childrenIds: preset.childrenIds,
-    });
-    setAuthSuccessMsg(`Firebase Auth Token issued for ${email} (${selectedRole.toUpperCase()})`);
-    if (onRoleChange) {
-      onRoleChange(selectedRole, { name: preset.name, email: email, childrenIds: preset.childrenIds });
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setSuccessMessage('Successfully signed out.');
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error('Sign-out error:', err);
+      setErrorMessage(err?.message || 'Failed to sign out.');
     }
   };
 
@@ -95,28 +111,42 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
         </div>
         <div className="flex items-center gap-2 font-mono text-xs bg-slate-50 dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
           <span className="text-slate-500 dark:text-slate-400">Security Gate:</span>
-          <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">{signedInUser.role} Active</span>
+          <span className={`font-bold uppercase ${
+            role === 'admin'
+              ? 'text-cyan-600 dark:text-cyan-400'
+              : role === 'coach'
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : role === 'parent'
+              ? 'text-purple-600 dark:text-purple-400'
+              : 'text-slate-500 dark:text-slate-400'
+          }`}>
+            {role ? `${role} Active` : user ? 'Authenticated (No Role)' : 'Unauthenticated'}
+          </span>
         </div>
       </div>
 
-      {/* Quick Switch Profiles Bar */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-3 shadow-sm">
-        <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
-          <UserCheck className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-          Quick Switch RBAC Test Accounts (Firebase Auth Preset Sessions)
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {presetAccounts.map((p) => {
-            const isCurrent = signedInUser.role === p.role;
-            return (
+      {/* Demo Preset Accounts (DEV ONLY) */}
+      {isDev ? (
+        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-amber-500/30 dark:border-amber-500/20 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              Development Demo Login Credentials (NODE_ENV !== &apos;production&apos;)
+            </h3>
+            <span className="text-[10px] font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
+              Dev Only
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-600 dark:text-slate-400">
+            Click any demo profile to populate the sign-in form below. Production builds automatically hide these test accounts.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {presetAccounts.map((p) => (
               <button
                 key={p.role}
-                onClick={() => handleQuickSwitch(p)}
-                className={`p-4 min-h-[44px] rounded-xl text-left border transition-all relative ${
-                  isCurrent
-                    ? 'bg-slate-100 dark:bg-slate-950 border-cyan-500 ring-2 ring-cyan-500/20'
-                    : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
+                type="button"
+                onClick={() => handlePresetSelect(p)}
+                className="p-4 min-h-[44px] rounded-xl text-left border bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 dark:hover:border-amber-500/40 transition-all"
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
@@ -128,9 +158,9 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
                   }`}>
                     {p.role}
                   </span>
-                  {isCurrent && (
+                  {user?.email === p.email && (
                     <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Active
+                      <CheckCircle2 className="w-3 h-3" /> Signed In
                     </span>
                   )}
                 </div>
@@ -140,90 +170,120 @@ export default function AuthSection({ currentRole = 'admin', onRoleChange }: Aut
                   {p.description}
                 </p>
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-xs flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+          <span>Production Security Policy: Demo presets are disabled in production environments.</span>
+        </div>
+      )}
 
-      {authSuccessMsg && (
+      {/* Success Notification */}
+      {successMessage && (
         <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-mono flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
-          {authSuccessMsg}
+          {successMessage}
+        </div>
+      )}
+
+      {/* Error Notification */}
+      {errorMessage && (
+        <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400 text-xs font-mono flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {errorMessage}
         </div>
       )}
 
       {/* Grid for Form & RBAC Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Custom Login Form */}
+        {/* Real Firebase Login Form */}
         <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
             <Key className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
             Firebase Authentication Gateway
           </h3>
 
-          <form onSubmit={handleManualSubmit} className="max-w-md w-full mx-auto space-y-4 text-xs">
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Target Role
-              </label>
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value as any)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 h-11 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
+          {user ? (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                <div className="font-bold text-slate-800 dark:text-slate-200 text-sm">Active Firebase Session</div>
+                <div className="text-slate-600 dark:text-slate-400">Email: <span className="font-mono text-slate-900 dark:text-white font-semibold">{user.email}</span></div>
+                <div className="text-slate-600 dark:text-slate-400">UID: <span className="font-mono text-cyan-600 dark:text-cyan-400">{user.uid}</span></div>
+                <div className="text-slate-600 dark:text-slate-400">Role: <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase">{role || 'None'}</span></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={authLoading}
+                className="w-full min-h-[44px] bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
-                <option value="admin">Admin (Executive & Financial Director)</option>
-                <option value="coach">Coach (Sports & Biomechanics Instructor)</option>
-                <option value="parent">Parent (Youth Guardian)</option>
-              </select>
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
             </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 h-11 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Password
-              </label>
-              <div className="relative">
+          ) : (
+            <form onSubmit={handleSignIn} className="max-w-md w-full mx-auto space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Email Address
+                </label>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="user@academyhub.io"
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 h-11 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-0 top-0 h-11 w-11 flex items-center justify-center text-slate-400 hover:text-slate-200"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold py-2.5 h-11 min-h-[44px] rounded-xl transition-colors shadow-sm"
-            >
-              Sign In & Obtain Role Token
-            </button>
-          </form>
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 h-11 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-0 top-0 h-11 w-11 flex items-center justify-center text-slate-400 hover:text-slate-200"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting || authLoading}
+                className="w-full bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold py-2.5 h-11 min-h-[44px] rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Signing In...</span>
+                  </>
+                ) : (
+                  <span>Sign In with Firebase Auth</span>
+                )}
+              </button>
+            </form>
+          )}
 
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
             <div className="font-bold text-slate-800 dark:text-slate-200">Active Session Claims:</div>
-            <div>UID: <span className="font-mono text-cyan-600 dark:text-cyan-400">usr_auth_{signedInUser.role}_881</span></div>
-            <div>Role Claim: <span className="font-mono text-emerald-600 dark:text-emerald-400">{signedInUser.role}</span></div>
+            <div>UID: <span className="font-mono text-cyan-600 dark:text-cyan-400">{user?.uid || 'Not signed in'}</span></div>
+            <div>Role Claim: <span className="font-mono text-emerald-600 dark:text-emerald-400">{role || 'None'}</span></div>
           </div>
         </div>
 

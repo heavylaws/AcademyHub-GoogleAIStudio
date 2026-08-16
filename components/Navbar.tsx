@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @next/next/no-img-element */
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Activity,
   Calendar,
@@ -13,24 +13,15 @@ import {
   LogOut,
   Loader2,
   Menu,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
-import { auth } from '@/lib/firebase';
-import {
-  signInWithPopup,
-  GoogleAuthProvider,
-  signOut,
-  onAuthStateChanged,
-  User
-} from 'firebase/auth';
+import { useAuth } from '@/lib/authContext';
 
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  currentUserRole?: string;
-  currentUserName?: string;
-  onUserAuthChange?: (user: { name: string; email: string; role?: string }) => void;
 }
 
 function GoogleIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -56,56 +47,26 @@ function GoogleIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-export default function Navbar({
-  activeTab,
-  setActiveTab,
-  currentUserRole = 'admin',
-  currentUserName = 'Admin Director',
-  onUserAuthChange,
-}: NavbarProps) {
-  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState<boolean>(true);
+export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
+  const { user, role, loading: authLoading, signInWithGoogle, signOut } = useAuth();
   const [signingIn, setSigningIn] = useState<boolean>(false);
-  const [mockGoogleUser, setMockGoogleUser] = useState<{ displayName: string; email: string; photoURL?: string } | null>(null);
-  const [domainWarning, setDomainWarning] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setFirebaseUser(user);
-      setAuthLoading(false);
-      if (user && onUserAuthChange) {
-        onUserAuthChange({
-          name: user.displayName || user.email?.split('@')[0] || 'Authenticated User',
-          email: user.email || 'user@academyhub.io',
-        });
-      }
-    });
-    return () => unsubscribe();
-  }, [onUserAuthChange]);
 
   const handleGoogleSignIn = async () => {
     setSigningIn(true);
-    setDomainWarning(null);
+    setAuthError(null);
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      await signInWithGoogle();
     } catch (error: any) {
-      if (error?.code === 'auth/unauthorized-domain' || error?.code === 'auth/operation-not-allowed' || error?.code === 'auth/popup-blocked') {
-        // Fallback for local preview when localhost is not whitelisted in Firebase Console
-        const mockUsr = {
-          displayName: 'Google Athlete (Verified)',
-          email: 'user.google@gmail.com',
-        };
-        setMockGoogleUser(mockUsr);
-        setDomainWarning('Firebase Notice: localhost is not yet in Authorized Domains in Firebase Console. Authenticated in local Google Auth preview mode.');
-        if (onUserAuthChange) {
-          onUserAuthChange({
-            name: mockUsr.displayName,
-            email: mockUsr.email,
-          });
-        }
+      if (error?.code === 'auth/unauthorized-domain') {
+        setAuthError('Sign-in unavailable: this domain is not authorized in Firebase Console yet.');
+      } else if (error?.code === 'auth/popup-blocked') {
+        setAuthError('Sign-in popup was blocked by your browser. Please allow popups for this site.');
+      } else if (error?.code === 'auth/operation-not-allowed') {
+        setAuthError('Google sign-in is not enabled in Firebase Console authentication providers.');
       } else if (error?.code !== 'auth/popup-closed-by-user') {
+        setAuthError(error?.message || 'Google sign-in failed.');
         console.error('Firebase Google Sign-in error:', error);
       }
     } finally {
@@ -115,17 +76,9 @@ export default function Navbar({
 
   const handleSignOut = async () => {
     try {
-      setMockGoogleUser(null);
-      setDomainWarning(null);
-      await signOut(auth);
-      if (onUserAuthChange) {
-        onUserAuthChange({
-          name: 'Admin Director',
-          email: 'admin@academyhub.io',
-          role: 'admin',
-        });
-      }
-    } catch (error) {
+      setAuthError(null);
+      await signOut();
+    } catch (error: any) {
       console.error('Firebase Sign-out error:', error);
     }
   };
@@ -138,6 +91,9 @@ export default function Navbar({
     { id: 'billing', label: 'Billing & Ledger', icon: CreditCard },
     { id: 'auth', label: 'Auth & COPPA', icon: ShieldCheck },
   ];
+
+  const currentRole = role || (user ? 'Authenticated' : 'Guest');
+  const displayName = user?.displayName || user?.email?.split('@')[0] || (user ? 'User' : 'Guest');
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 transition-colors duration-200">
@@ -187,37 +143,37 @@ export default function Navbar({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('auth')}
-              title="Click to switch role or view RBAC matrix"
+              title="Click to view auth status & RBAC security gate"
               className="flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-medium hover:border-cyan-500/50 transition-all"
             >
               <span className={`w-2 h-2 rounded-full ${
-                currentUserRole === 'admin' ? 'bg-cyan-500' : currentUserRole === 'coach' ? 'bg-emerald-500' : 'bg-purple-500'
+                role === 'admin' ? 'bg-cyan-500' : role === 'coach' ? 'bg-emerald-500' : role === 'parent' ? 'bg-purple-500' : 'bg-slate-400'
               }`} />
-              <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">{currentUserRole}:</span>
-              <span className="text-slate-500 dark:text-slate-400 truncate max-w-[90px] hidden sm:inline">{currentUserName}</span>
+              <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">{currentRole}:</span>
+              <span className="text-slate-500 dark:text-slate-400 truncate max-w-[90px] hidden sm:inline">{displayName}</span>
             </button>
 
             {authLoading ? (
               <div className="px-3 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400 text-xs flex items-center justify-center gap-1.5">
                 <Loader2 className="w-4 h-4 animate-spin" />
               </div>
-            ) : (firebaseUser || mockGoogleUser) ? (
+            ) : user ? (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 px-3 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                  {(firebaseUser?.photoURL || mockGoogleUser?.photoURL) ? (
+                  {user.photoURL ? (
                     <img
-                      src={firebaseUser?.photoURL || mockGoogleUser?.photoURL}
-                      alt={(firebaseUser?.displayName || mockGoogleUser?.displayName) || 'User'}
+                      src={user.photoURL}
+                      alt={user.displayName || 'User'}
                       className="w-5 h-5 rounded-full object-cover"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
                     <div className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-[10px] font-bold">
-                      {(firebaseUser?.displayName || mockGoogleUser?.displayName)?.charAt(0) || 'G'}
+                      {displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
                   <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[110px]">
-                    {firebaseUser?.displayName || mockGoogleUser?.displayName || firebaseUser?.email || mockGoogleUser?.email}
+                    {user.displayName || user.email}
                   </span>
                 </div>
                 <button
@@ -317,33 +273,33 @@ export default function Navbar({
                   className="flex w-full items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium"
                 >
                   <span className={`w-2 h-2 rounded-full ${
-                    currentUserRole === 'admin' ? 'bg-cyan-500' : currentUserRole === 'coach' ? 'bg-emerald-500' : 'bg-purple-500'
+                    role === 'admin' ? 'bg-cyan-500' : role === 'coach' ? 'bg-emerald-500' : role === 'parent' ? 'bg-purple-500' : 'bg-slate-400'
                   }`} />
-                  <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">{currentUserRole}:</span>
-                  <span className="text-slate-500 dark:text-slate-400 truncate">{currentUserName}</span>
+                  <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">{currentRole}:</span>
+                  <span className="text-slate-500 dark:text-slate-400 truncate">{displayName}</span>
                 </button>
                 
                 {authLoading ? (
                   <div className="px-4 min-h-[44px] flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                     <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
                   </div>
-                ) : (firebaseUser || mockGoogleUser) ? (
+                ) : user ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 px-4 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                      {(firebaseUser?.photoURL || mockGoogleUser?.photoURL) ? (
+                      {user.photoURL ? (
                         <img
-                          src={firebaseUser?.photoURL || mockGoogleUser?.photoURL}
+                          src={user.photoURL}
                           alt="User"
                           className="w-6 h-6 rounded-full object-cover"
                           referrerPolicy="no-referrer"
                         />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-bold">
-                          {(firebaseUser?.displayName || mockGoogleUser?.displayName)?.charAt(0) || 'G'}
+                          {displayName.charAt(0).toUpperCase()}
                         </div>
                       )}
                       <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
-                        {firebaseUser?.displayName || mockGoogleUser?.displayName || firebaseUser?.email || mockGoogleUser?.email}
+                        {user.displayName || user.email}
                       </span>
                     </div>
                     <button
@@ -380,11 +336,12 @@ export default function Navbar({
         </div>
       )}
 
-      {domainWarning && (
+      {authError && (
         <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center text-xs text-amber-700 dark:text-amber-300 font-medium flex items-center justify-center gap-2">
-          <span>⚠️ {domainWarning}</span>
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span>{authError}</span>
           <button
-            onClick={() => setDomainWarning(null)}
+            onClick={() => setAuthError(null)}
             className="underline text-[11px] font-bold min-h-[44px] min-w-[44px] text-slate-700 dark:text-slate-200 hover:text-white flex items-center justify-center"
           >
             Dismiss
