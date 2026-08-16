@@ -741,7 +741,9 @@ export default function BillingSection() {
                   ) : (
                     <CreditCard className="w-4 h-4" />
                   )}
-                  <span>Pay with Stripe (${selectedInvoiceModal.netTotal}.00)</span>
+                  <span>
+                    Pay with Stripe (${selectedInvoiceModal.installmentBreakdown[0]?.amount ?? selectedInvoiceModal.netTotal}.00)
+                  </span>
                 </button>
               ) : (
                 <span className="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200 flex items-center gap-1.5">

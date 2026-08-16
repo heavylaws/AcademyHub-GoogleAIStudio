@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { getInvoiceById } from '@/services/billingService';
+import { getInvoiceByIdAdmin } from '@/services/billingAdminService';
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const invoice = await getInvoiceById(invoiceId);
+    const invoice = await getInvoiceByIdAdmin(invoiceId);
 
     if (!invoice) {
       return NextResponse.json(
@@ -45,6 +45,15 @@ export async function POST(req: Request) {
 
     const origin = req.headers.get('origin') || process.env.APP_URL || 'http://localhost:3000';
 
+    // Charge the first/immediate installment amount (which is schedule-aware and includes early-pay discounts)
+    const currentInstallment = invoice.installmentBreakdown?.[0];
+    const chargeAmount = currentInstallment?.amount ?? invoice.netTotal;
+    const isMultiInstallment = (invoice.installmentBreakdown?.length || 0) > 1;
+
+    const description = isMultiInstallment
+      ? `Installment 1 of ${invoice.installmentBreakdown.length} for: ${invoice.children.map((c) => c.childName).join(', ')} (${invoice.paymentSchedule} schedule)`
+      : `Consolidated athletic tuition for: ${invoice.children.map((c) => c.childName).join(', ')}`;
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -53,9 +62,9 @@ export async function POST(req: Request) {
             currency: 'usd',
             product_data: {
               name: `AcademyHub Athletics - Family Invoice (${invoice.id})`,
-              description: `Consolidated athletic tuition for: ${invoice.children.map((c) => c.childName).join(', ')}`,
+              description,
             },
-            unit_amount: Math.round(invoice.netTotal * 100), // Stripe expects unit amount in cents
+            unit_amount: Math.round(chargeAmount * 100), // Stripe expects unit amount in cents
           },
           quantity: 1,
         },

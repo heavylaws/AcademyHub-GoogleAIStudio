@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { updateInvoice } from '@/services/billingService';
+import { getInvoiceByIdAdmin, updateInvoiceAdmin } from '@/services/billingAdminService';
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -48,7 +48,32 @@ export async function POST(req: Request) {
 
       if (invoiceId) {
         console.log(`[Stripe Webhook] Payment completed for invoice: ${invoiceId}`);
-        await updateInvoice(invoiceId, { payment_status: 'paid' });
+        const existingInvoice = await getInvoiceByIdAdmin(invoiceId);
+
+        if (existingInvoice) {
+          const updatedInstallments = existingInvoice.installmentBreakdown ? [...existingInvoice.installmentBreakdown] : [];
+          if (updatedInstallments.length > 0) {
+            updatedInstallments[0] = {
+              ...updatedInstallments[0],
+              status: 'Paid',
+            };
+          }
+
+          // In v1 scope: only mark overall invoice payment_status as 'paid' if there is exactly 1 installment (upfront payment).
+          // For 2-part and monthly plans, the first installment is marked Paid while the overall invoice remains 'pending'.
+          // NOTE / KNOWN LIMITATION: Full multi-installment payment lifecycle (handling subsequent installments 2 and 3)
+          // is explicitly deferred to a future iteration.
+          const isFullPayment = updatedInstallments.length === 1;
+          const nextPaymentStatus = isFullPayment ? 'paid' : 'pending';
+
+          await updateInvoiceAdmin(invoiceId, {
+            installmentBreakdown: updatedInstallments,
+            payment_status: nextPaymentStatus,
+          });
+        } else {
+          // Fallback if invoice was not found by ID
+          await updateInvoiceAdmin(invoiceId, { payment_status: 'paid' });
+        }
       } else {
         console.warn('[Stripe Webhook] checkout.session.completed received with no invoiceId in metadata');
       }

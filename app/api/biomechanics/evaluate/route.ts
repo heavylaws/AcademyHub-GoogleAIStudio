@@ -109,7 +109,7 @@ Input Assessment Data:
 Provide an objective assessment score (0-100), letter grade ('A', 'B', 'C', 'D'), synthesis of notes, and detailed agent insights.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',

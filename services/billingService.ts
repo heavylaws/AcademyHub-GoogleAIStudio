@@ -8,7 +8,6 @@ import {
   doc,
   setDoc,
   updateDoc,
-  getDoc,
   getDocs,
   query,
   where,
@@ -69,27 +68,6 @@ export async function createInvoice(
   }
 }
 
-/**
- * Fetches a single family invoice by its ID.
- */
-export async function getInvoiceById(invoiceId: string): Promise<FamilyInvoice | null> {
-  try {
-    const docRef = doc(db, INVOICES_COLLECTION, invoiceId);
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) {
-      return null;
-    }
-    const data = docSnap.data();
-    return {
-      id: docSnap.id,
-      ...data,
-      payment_status: data.payment_status || (data.status === 'Paid' ? 'paid' : 'pending'),
-    } as FamilyInvoice;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.GET, `${INVOICES_COLLECTION}/${invoiceId}`);
-    throw err;
-  }
-}
 
 /**
  * Updates an existing invoice document in Firestore (e.g. payment_status or line items).
