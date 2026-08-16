@@ -5,37 +5,21 @@ import {
   Activity,
   User,
   Plus,
-  Minus,
-  Play,
-  Square,
-  RotateCcw,
-  Video,
-  Upload,
   CheckCircle2,
   AlertCircle,
-  Clock,
   Flame,
-  Sparkles,
-  Tag,
-  FileText,
-  Sliders,
-  Check,
-  ChevronRight,
-  ShieldAlert,
-  Film,
-  X,
   Layers,
   ArrowRight,
   Cpu,
   Bot,
   ToggleLeft,
   ToggleRight,
+  Sparkles,
 } from 'lucide-react';
 import {
   Assessment,
-  DataSource,
   calculateComputedScore,
-  deriveRubricGrade
+  deriveRubricGrade,
 } from '@/types/assessment';
 import { saveAssessmentToFirestore } from '@/lib/assessmentConverters';
 import {
@@ -45,6 +29,9 @@ import {
   EvaluatedAssessment,
 } from '@/services/evaluationService';
 import DataSourceBadge from './DataSourceBadge';
+import MetricsInputPanel from './RapidAssessmentForm/MetricsInputPanel';
+import QualitativeObservationsPanel from './RapidAssessmentForm/QualitativeObservationsPanel';
+import VideoAttachmentHook, { AttachedFileInfo } from './RapidAssessmentForm/VideoAttachmentHook';
 
 export interface RapidAthlete {
   id: string;
@@ -54,7 +41,7 @@ export interface RapidAthlete {
   avatarUrl?: string;
 }
 
-const DEFAULT_ATHLETES: RapidAthlete[] = [
+export const DEFAULT_ATHLETES: RapidAthlete[] = [
   { id: 'ath_8042', name: 'Marcus Vance', sport: 'Football', parentEmail: 'robert.vance@gmail.com' },
   { id: 'ath_8043', name: 'Sarah Vance', sport: 'Basketball', parentEmail: 'robert.vance@gmail.com' },
   { id: 'ath_8044', name: 'Alex Johnson', sport: 'Basketball', parentEmail: 'parent.johnson@gmail.com' },
@@ -62,10 +49,10 @@ const DEFAULT_ATHLETES: RapidAthlete[] = [
   { id: 'ath_8046', name: 'Liam Chen', sport: 'Cricket', parentEmail: 'chen.family@gmail.com' },
 ];
 
-const SPORTS_OPTIONS = ['Football', 'Basketball', 'Cricket', 'Swimming'] as const;
-type SportType = typeof SPORTS_OPTIONS[number];
+export const SPORTS_OPTIONS = ['Football', 'Basketball', 'Cricket', 'Swimming'] as const;
+export type SportType = typeof SPORTS_OPTIONS[number];
 
-const EXERCISE_SOPS = [
+export const EXERCISE_SOPS = [
   'Push-ups',
   'Countermovement Jump',
   'Squat Jump',
@@ -73,15 +60,7 @@ const EXERCISE_SOPS = [
   'Core Plank Stability'
 ] as const;
 
-// Common technique faults mapped by exercise or sport
-const PRESET_FAULT_TAGS: Record<string, string[]> = {
-  'Push-ups': ['Hips Sagging', 'Elbow Flare', 'Incomplete Depth', 'Head Dropping', 'Uneven Press'],
-  'Countermovement Jump': ['Valgus Collapse', 'Asymmetric Loading', 'Incomplete Extension', 'Stiff Landing', 'Trunk Lean'],
-  'Squat Jump': ['Incomplete Depth', 'Valgus Collapse', 'Heel Lift', 'Lumbar Flexion', 'Heavy Impact'],
-  'default': ['Hips Sagging', 'Elbow Flare', 'Incomplete Depth', 'Valgus Collapse', 'Asymmetric Loading', 'Heel Lift', 'Trunk Lean']
-};
-
-interface RapidAssessmentFormProps {
+export interface RapidAssessmentFormProps {
   onAssessmentSaved?: (assessment: Assessment) => void;
   defaultSport?: SportType;
   defaultAthleteId?: string;
@@ -125,15 +104,8 @@ export default function RapidAssessmentForm({
   const [coachNotes, setCoachNotes] = useState<string>('');
 
   // 5. Optional Video Upload Hook State
-  const [attachedFile, setAttachedFile] = useState<{
-    name: string;
-    size: number;
-    type: string;
-    storagePath: string;
-    localPreviewUrl?: string;
-  } | null>(null);
+  const [attachedFile, setAttachedFile] = useState<AttachedFileInfo | null>(null);
   const [isDraggingVideo, setIsDraggingVideo] = useState<boolean>(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // 6. Submission & Status State
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -180,6 +152,10 @@ export default function RapidAssessmentForm({
     );
   };
 
+  const clearFaults = () => {
+    setSelectedFaults([]);
+  };
+
   // Dynamic W1=0.4, W2=0.4, W3=0.2 Score Calculation
   const computedScore = calculateComputedScore(
     {
@@ -196,15 +172,7 @@ export default function RapidAssessmentForm({
 
   const rubricGrade = deriveRubricGrade(computedScore);
 
-  // Video File Selection Handler
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processSelectedFile(file);
-    }
-  };
-
-  const processSelectedFile = (file: File) => {
+  const handleFileSelect = (file: File) => {
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `assessments/live_capture/${Date.now()}_${sanitizedName}`;
     const localUrl = URL.createObjectURL(file);
@@ -218,14 +186,11 @@ export default function RapidAssessmentForm({
     });
   };
 
-  const removeAttachedFile = () => {
+  const handleFileRemove = () => {
     if (attachedFile?.localPreviewUrl) {
       URL.revokeObjectURL(attachedFile.localPreviewUrl);
     }
     setAttachedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   // Form Submission Action -> Evaluated through evaluationService -> Saved to Firestore
@@ -326,11 +291,8 @@ export default function RapidAssessmentForm({
     setEnduranceScore(80);
     setSelectedFaults([]);
     setCoachNotes('');
-    removeAttachedFile();
+    handleFileRemove();
   };
-
-  const activeFaultList =
-    PRESET_FAULT_TAGS[selectedExercise] || PRESET_FAULT_TAGS['default'];
 
   return (
     <div
@@ -591,350 +553,41 @@ export default function RapidAssessmentForm({
           )}
 
           {/* 2. Quantitative Section: Rep Stepper + Live Timer */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Flame className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                1. Quantitative Execution ({selectedExercise})
-              </h3>
-              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                W₃ = 0.2 Weight Factor
-              </span>
-            </div>
+          <MetricsInputPanel
+            selectedExercise={selectedExercise}
+            validReps={validReps}
+            onValidRepsChange={setValidReps}
+            durationSeconds={durationSeconds}
+            isTimerRunning={isTimerRunning}
+            onToggleTimer={toggleTimer}
+            onResetTimer={resetTimer}
+            onSetTimerPreset={setTimerPreset}
+          />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Reps Numeric Stepper */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Valid Completed Reps
-                  </span>
-                  <span className="text-2xl font-black font-mono text-cyan-600 dark:text-cyan-400">
-                    {validReps}
-                  </span>
-                </div>
+          {/* 3. Qualitative Section: Form Quality & Endurance Sliders + Preset Fault Tags + Coach Notes */}
+          <QualitativeObservationsPanel
+            selectedExercise={selectedExercise}
+            formQualityScore={formQualityScore}
+            onFormQualityScoreChange={setFormQualityScore}
+            enduranceScore={enduranceScore}
+            onEnduranceScoreChange={setEnduranceScore}
+            selectedFaults={selectedFaults}
+            onToggleFault={toggleFault}
+            onClearFaults={clearFaults}
+            coachNotes={coachNotes}
+            onCoachNotesChange={setCoachNotes}
+          />
 
-                {/* Big touch stepper buttons (>=44px mobile friendly) */}
-                <div className="flex items-center gap-2">
-                  <button
-                    id="stepper-minus-5"
-                    type="button"
-                    onClick={() => setValidReps((r) => Math.max(0, r - 5))}
-                    className="h-11 px-3 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-mono font-bold text-xs active:scale-95 transition-all"
-                  >
-                    -5
-                  </button>
-                  <button
-                    id="stepper-minus-1"
-                    type="button"
-                    onClick={() => setValidReps((r) => Math.max(0, r - 1))}
-                    className="h-11 w-12 flex items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold active:scale-95 transition-all"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
+          {/* 4. Optional Video Upload Hook */}
+          <VideoAttachmentHook
+            attachedFile={attachedFile}
+            onFileSelect={handleFileSelect}
+            onFileRemove={handleFileRemove}
+            isDraggingVideo={isDraggingVideo}
+            onDragStateChange={setIsDraggingVideo}
+          />
 
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={validReps}
-                    onChange={(e) => setValidReps(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="h-11 flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-center font-mono font-black text-lg text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
-                  />
-
-                  <button
-                    id="stepper-plus-1"
-                    type="button"
-                    onClick={() => setValidReps((r) => r + 1)}
-                    className="h-11 w-12 flex items-center justify-center rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold active:scale-95 transition-all shadow-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                  <button
-                    id="stepper-plus-5"
-                    type="button"
-                    onClick={() => setValidReps((r) => r + 5)}
-                    className="h-11 px-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs active:scale-95 transition-all shadow-sm"
-                  >
-                    +5
-                  </button>
-                </div>
-              </div>
-
-              {/* Timer & Duration Section */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-                    Session Duration
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-black text-2xl text-slate-900 dark:text-white">
-                      {durationSeconds}s
-                    </span>
-                    {isTimerRunning && (
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Live Stopwatch Controls & Presets */}
-                <div className="flex items-center gap-2">
-                  <button
-                    id="timer-toggle-btn"
-                    type="button"
-                    onClick={toggleTimer}
-                    className={`h-11 flex-1 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm ${
-                      isTimerRunning
-                        ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                        : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                    }`}
-                  >
-                    {isTimerRunning ? (
-                      <>
-                        <Square className="w-3.5 h-3.5" /> Stop Timer
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-3.5 h-3.5 fill-current" /> Live Timer
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    id="timer-reset-btn"
-                    type="button"
-                    onClick={resetTimer}
-                    title="Reset to 30s"
-                    className="h-11 w-11 flex items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
-
-                  <div className="hidden sm:flex items-center gap-1">
-                    {[15, 30, 45, 60].map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => setTimerPreset(preset)}
-                        className={`h-11 px-2.5 rounded-xl font-mono text-[11px] font-bold transition-all ${
-                          durationSeconds === preset
-                            ? 'bg-cyan-500 text-slate-950'
-                            : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                        }`}
-                      >
-                        {preset}s
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 3. Qualitative Section: Form Quality & Endurance Sliders + Preset Fault Tags */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                2. Qualitative Scoring & Fault Diagnostics
-              </h3>
-              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                W₁ = 0.4 • W₂ = 0.4 Factors
-              </span>
-            </div>
-
-            {/* Sliders Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Form Quality Slider */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Sliders className="w-3.5 h-3.5 text-emerald-500" />
-                    Form Quality Score (F_qual)
-                  </span>
-                  <span className="font-mono font-black text-sm text-emerald-600 dark:text-emerald-400">
-                    {formQualityScore} / 100
-                  </span>
-                </div>
-                <input
-                  id="slider-form-quality"
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={formQualityScore}
-                  onChange={(e) => setFormQualityScore(Number(e.target.value))}
-                  className="w-full min-h-[44px] accent-emerald-500 bg-slate-200 dark:bg-slate-800 h-2 rounded-lg appearance-none cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] font-mono text-slate-500">
-                  <span>0 (Severe Flaws)</span>
-                  <span>50 (Fair)</span>
-                  <span>100 (Flawless)</span>
-                </div>
-              </div>
-
-              {/* Endurance Score Slider */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Sliders className="w-3.5 h-3.5 text-cyan-500" />
-                    Endurance & Power Score (E_score)
-                  </span>
-                  <span className="font-mono font-black text-sm text-cyan-600 dark:text-cyan-400">
-                    {enduranceScore} / 100
-                  </span>
-                </div>
-                <input
-                  id="slider-endurance-score"
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={enduranceScore}
-                  onChange={(e) => setEnduranceScore(Number(e.target.value))}
-                  className="w-full min-h-[44px] accent-cyan-500 bg-slate-200 dark:bg-slate-800 h-2 rounded-lg appearance-none cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] font-mono text-slate-500">
-                  <span>0 (Rapid Fatigue)</span>
-                  <span>50 (Moderate)</span>
-                  <span>100 (Peak Stamina)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Selectable Preset Tag Chips for Technique Faults */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Tag className="w-3.5 h-3.5 text-amber-500" />
-                  Preset Technique Faults (Tap to toggle):
-                </label>
-                {selectedFaults.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFaults([])}
-                    className="min-h-[44px] text-[10px] font-mono text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline"
-                  >
-                    Clear all ({selectedFaults.length})
-                  </button>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-2 pt-1">
-                {activeFaultList.map((tag) => {
-                  const isSelected = selectedFaults.includes(tag);
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => toggleFault(tag)}
-                      className={`min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-semibold font-mono transition-all flex items-center gap-1.5 active:scale-95 ${
-                        isSelected
-                          ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800 hover:border-slate-400'
-                      }`}
-                    >
-                      {isSelected ? (
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      ) : (
-                        <ShieldAlert className="w-3.5 h-3.5 text-slate-400" />
-                      )}
-                      {tag}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* 4. Coach Notes Free-Form Text Field */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-slate-400" />
-              Coach Qualitative Notes & Correction Directives
-            </label>
-            <textarea
-              id="coach-notes-textarea"
-              rows={2}
-              value={coachNotes}
-              onChange={(e) => setCoachNotes(e.target.value)}
-              placeholder="e.g., Kept great spinal alignment through first 8 reps. Slight elbow flare on final 2. Prescribed eccentric tempo..."
-              className="w-full min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl p-3.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
-            />
-          </div>
-
-          {/* 5. Optional Video Upload Hook */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                <Film className="w-3.5 h-3.5 text-cyan-500" />
-                Optional Clip Attachment (Media References)
-              </label>
-              <span className="text-[10px] text-slate-500 font-mono">Non-blocking metadata hook</span>
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="video/mp4,video/quicktime,video/webm"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-
-            {attachedFile ? (
-              <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2.5 truncate">
-                  <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-600 dark:text-cyan-400">
-                    <Video className="w-4 h-4" />
-                  </div>
-                  <div className="truncate">
-                    <div className="font-bold text-slate-900 dark:text-white truncate">
-                      {attachedFile.name}
-                    </div>
-                    <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                      {(attachedFile.size / (1024 * 1024)).toFixed(1)} MB • {attachedFile.storagePath}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={removeAttachedFile}
-                  className="p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDraggingVideo(true);
-                }}
-                onDragLeave={() => setIsDraggingVideo(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDraggingVideo(false);
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) processSelectedFile(file);
-                }}
-                onClick={() => fileInputRef.current?.click()}
-                className={`p-4 rounded-2xl border-2 border-dashed text-center cursor-pointer transition-all ${
-                  isDraggingVideo
-                    ? 'border-cyan-500 bg-cyan-500/10'
-                    : 'border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 bg-slate-50 dark:bg-slate-950/50'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  <Upload className="w-4 h-4 text-cyan-500" />
-                  <span>Attach Video Clip or Drag & Drop (Optional)</span>
-                </div>
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  Stores storage reference metadata without blocking form submission
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* 6. Action Bar / Submission */}
+          {/* 5. Action Bar / Submission */}
           <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <span>Target Pipeline:</span>

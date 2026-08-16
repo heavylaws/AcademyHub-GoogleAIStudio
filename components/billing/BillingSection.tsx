@@ -1,32 +1,55 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CreditCard, DollarSign, Users, CheckCircle2, Award, Calendar, Sparkles, Percent, FileText } from 'lucide-react';
-
-interface ChildRegistration {
-  childName: string;
-  sport: string;
-  monthlyFee: number;
-}
-
-interface FamilyInvoice {
-  id: string;
-  parentName: string;
-  parentEmail: string;
-  children: ChildRegistration[];
-  subtotal: number;
-  discountedChildName: string | null;
-  siblingDiscountAmount: number;
-  netTotal: number;
-  paymentSchedule: 'upfront' | '2-part' | 'monthly';
-  installmentBreakdown: { label: string; amount: number; dueDate: string; status: string }[];
-  status: 'Paid' | 'Installment Active' | 'Pending';
-  issuedDate: string;
-}
+import {
+  CreditCard,
+  DollarSign,
+  Users,
+  CheckCircle2,
+  Award,
+  Calendar,
+  Sparkles,
+  Percent,
+  FileText,
+  Database,
+  ShieldAlert,
+  RefreshCw,
+  Loader2,
+} from 'lucide-react';
+import { useAuth } from '@/lib/authContext';
+import {
+  ChildRegistration,
+  FamilyInvoice,
+  PaymentSchedule,
+  PaymentStatus,
+  calculateSiblingDiscount,
+  getInstallments,
+} from '@/types/billing';
+import { createInvoice, updateInvoice } from '@/services/billingService';
+import { useInvoicesSubscription } from '@/hooks/useInvoicesSubscription';
 
 export default function BillingSection() {
-  const [paymentSchedule, setPaymentSchedule] = useState<'upfront' | '2-part' | 'monthly'>('monthly');
+  const { user, role } = useAuth();
+  const isAdmin = role === 'admin';
+  const parentEmail = role === 'parent' ? (user?.email || undefined) : undefined;
+
+  const {
+    invoices: familyInvoices,
+    loading: invoicesLoading,
+    isPermissionDenied,
+    isLive,
+    totalCount,
+    seedSampleData,
+    refresh,
+  } = useInvoicesSubscription({ parentEmail, role });
+
+  const [paymentSchedule, setPaymentSchedule] = useState<PaymentSchedule>('monthly');
   const [selectedInvoiceModal, setSelectedInvoiceModal] = useState<FamilyInvoice | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSeeding, setIsSeeding] = useState<boolean>(false);
+  const [isProcessingStripe, setIsProcessingStripe] = useState<boolean>(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
+  const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
 
   // Pre-configured family registrations
   const [registeredChildren, setRegisteredChildren] = useState<ChildRegistration[]>([
@@ -38,106 +61,8 @@ export default function BillingSection() {
   const [newChildSport, setNewChildSport] = useState('Track & Field');
   const [newChildFee, setNewChildFee] = useState(220);
 
-  // Calculate 10% Sibling Discount on lowest cost sport
-  const calculateSiblingDiscount = (items: ChildRegistration[]) => {
-    const subtotal = items.reduce((acc, item) => acc + item.monthlyFee, 0);
-
-    if (items.length <= 1) {
-      return {
-        subtotal,
-        discountedChildName: null,
-        siblingDiscountAmount: 0,
-        netTotal: subtotal,
-      };
-    }
-
-    // Find lowest cost item
-    let lowestItem = items[0];
-    for (let i = 1; i < items.length; i++) {
-      if (items[i].monthlyFee < lowestItem.monthlyFee) {
-        lowestItem = items[i];
-      }
-    }
-
-    // 10% discount on lowest cost sport
-    const discount = Math.round(lowestItem.monthlyFee * 0.10);
-    const net = subtotal - discount;
-
-    return {
-      subtotal,
-      discountedChildName: lowestItem.childName,
-      siblingDiscountAmount: discount,
-      netTotal: net,
-    };
-  };
-
   const { subtotal, discountedChildName, siblingDiscountAmount, netTotal } = calculateSiblingDiscount(registeredChildren);
-
-  // Calculate Installment breakdown based on selected schedule
-  const getInstallments = (net: number, schedule: 'upfront' | '2-part' | 'monthly') => {
-    if (schedule === 'upfront') {
-      return [
-        { label: 'Single Upfront Payment (5% Early Pay Bonus applied)', amount: Math.round(net * 0.95), dueDate: 'Immediate', status: 'Due Now' }
-      ];
-    } else if (schedule === '2-part') {
-      const half = Math.round(net / 2);
-      return [
-        { label: 'Part 1 of 2 (50%)', amount: half, dueDate: 'Immediate', status: 'Due Now' },
-        { label: 'Part 2 of 2 (50%)', amount: net - half, dueDate: '30 Days', status: 'Scheduled' },
-      ];
-    } else {
-      const monthly = Math.round(net / 3);
-      return [
-        { label: 'Month 1 Installment', amount: monthly, dueDate: 'Immediate', status: 'Due Now' },
-        { label: 'Month 2 Installment', amount: monthly, dueDate: '30 Days', status: 'Scheduled' },
-        { label: 'Month 3 Installment', amount: net - (monthly * 2), dueDate: '60 Days', status: 'Scheduled' },
-      ];
-    }
-  };
-
   const currentInstallments = getInstallments(netTotal, paymentSchedule);
-
-  const [familyInvoices, setFamilyInvoices] = useState<FamilyInvoice[]>([
-    {
-      id: 'INV-FAM-8042',
-      parentName: 'Robert Vance',
-      parentEmail: 'robert.vance@gmail.com',
-      children: [
-        { childName: 'Marcus Vance', sport: 'Football (Soccer)', monthlyFee: 300 },
-        { childName: 'Sarah Vance', sport: 'Badminton', monthlyFee: 250 },
-      ],
-      subtotal: 550,
-      discountedChildName: 'Sarah Vance',
-      siblingDiscountAmount: 25,
-      netTotal: 525,
-      paymentSchedule: 'monthly',
-      installmentBreakdown: [
-        { label: 'Month 1 Installment', amount: 175, dueDate: 'Immediate', status: 'Paid' },
-        { label: 'Month 2 Installment', amount: 175, dueDate: '30 Days', status: 'Scheduled' },
-        { label: 'Month 3 Installment', amount: 175, dueDate: '60 Days', status: 'Scheduled' },
-      ],
-      status: 'Installment Active',
-      issuedDate: '2026-08-01',
-    },
-    {
-      id: 'INV-FAM-8044',
-      parentName: 'Elena Johnson',
-      parentEmail: 'parent.johnson@gmail.com',
-      children: [
-        { childName: 'Alex Johnson', sport: 'Basketball', monthlyFee: 300 },
-      ],
-      subtotal: 300,
-      discountedChildName: null,
-      siblingDiscountAmount: 0,
-      netTotal: 300,
-      paymentSchedule: 'upfront',
-      installmentBreakdown: [
-        { label: 'Single Upfront Payment', amount: 285, dueDate: 'Immediate', status: 'Paid' },
-      ],
-      status: 'Paid',
-      issuedDate: '2026-08-05',
-    },
-  ]);
 
   const handleAddChildToFamily = (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,46 +75,163 @@ export default function BillingSection() {
     setNewChildName('');
   };
 
-  const handleIssueFamilyInvoice = () => {
+  const handleIssueFamilyInvoice = async () => {
     const calc = calculateSiblingDiscount(registeredChildren);
     const inst = getInstallments(calc.netTotal, paymentSchedule);
 
-    const newInv: FamilyInvoice = {
-      id: `INV-FAM-${Math.floor(1000 + Math.random() * 9000)}`,
-      parentName: 'Robert Vance',
-      parentEmail: 'robert.vance@gmail.com',
-      children: [...registeredChildren],
-      subtotal: calc.subtotal,
-      discountedChildName: calc.discountedChildName,
-      siblingDiscountAmount: calc.siblingDiscountAmount,
-      netTotal: calc.netTotal,
-      paymentSchedule: paymentSchedule,
-      installmentBreakdown: inst,
-      status: 'Installment Active',
-      issuedDate: new Date().toISOString().split('T')[0],
-    };
+    try {
+      setIsSubmitting(true);
+      const targetParentName = user?.displayName || 'Robert Vance';
+      const targetParentEmail = user?.email || 'robert.vance@gmail.com';
 
-    setFamilyInvoices([newInv, ...familyInvoices]);
+      await createInvoice({
+        parentName: targetParentName,
+        parentEmail: targetParentEmail,
+        children: [...registeredChildren],
+        subtotal: calc.subtotal,
+        discountedChildName: calc.discountedChildName,
+        siblingDiscountAmount: calc.siblingDiscountAmount,
+        netTotal: calc.netTotal,
+        paymentSchedule: paymentSchedule,
+        installmentBreakdown: inst,
+        payment_status: 'pending',
+        issuedDate: new Date().toISOString().split('T')[0],
+      });
+
+      setActionSuccessMessage('Consolidated invoice persisted to Firestore.');
+      setTimeout(() => setActionSuccessMessage(null), 3500);
+    } catch (err) {
+      console.error('Failed to issue invoice to Firestore:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdatePaymentStatus = async (invoiceId: string, newStatus: PaymentStatus) => {
+    try {
+      await updateInvoice(invoiceId, { payment_status: newStatus });
+      setActionSuccessMessage(`Invoice ${invoiceId} updated to ${newStatus.toUpperCase()}`);
+      setTimeout(() => setActionSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Failed to update invoice status:', err);
+    }
+  };
+
+  const handleStripeCheckout = async (invoiceId: string) => {
+    try {
+      setIsProcessingStripe(true);
+      setStripeError(null);
+
+      const res = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to initiate Stripe Checkout session');
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No redirect URL returned by Stripe Checkout session endpoint');
+      }
+    } catch (err) {
+      console.error('Stripe Checkout Error:', err);
+      setStripeError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsProcessingStripe(false);
+    }
+  };
+
+  const handleSeed = async () => {
+    try {
+      setIsSeeding(true);
+      await seedSampleData();
+      setActionSuccessMessage('Sample invoices seeded into Firestore.');
+      setTimeout(() => setActionSuccessMessage(null), 3500);
+    } finally {
+      setIsSeeding(false);
+    }
   };
 
   return (
     <div className="space-y-6 transition-colors duration-200">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      {/* Header Banner with Live onSnapshot Status Indicator */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-            Consolidated Family Billing Engine & Sibling Discount Ledger
-          </h2>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="relative flex h-3 w-3">
+              {isLive && (
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              )}
+              <span
+                className={`relative inline-flex rounded-full h-3 w-3 ${
+                  isLive ? 'bg-emerald-500' : 'bg-amber-500'
+                }`}
+              />
+            </span>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              Consolidated Family Billing Engine & Sibling Discount Ledger
+            </h2>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> onSnapshot Active
+            </span>
+          </div>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
             Single consolidated invoices for multi-child families with automatic 10% Sibling Discount calculation and custom payment installment schedules.
           </p>
         </div>
-        <div className="flex items-center gap-2 font-mono text-xs bg-slate-50 dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
-          <span className="text-slate-500 dark:text-slate-400">Target Firestore:</span>
-          <span className="text-emerald-600 dark:text-emerald-400 font-bold">&quot;invoices&quot;</span>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-[11px] flex items-center gap-2">
+            <span className="text-slate-500 dark:text-slate-400">Invoices Count:</span>
+            <span className="font-bold text-cyan-600 dark:text-cyan-400">{totalCount}</span>
+          </div>
+          <button
+            onClick={refresh}
+            className="p-2 min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5"
+            title="Force Refresh Invoices"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${invoicesLoading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Sync</span>
+          </button>
+          {isAdmin && (
+            <button
+              onClick={handleSeed}
+              disabled={isSeeding}
+              className="px-3 py-2 min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-semibold border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5"
+            >
+              <Database className="w-3.5 h-3.5 text-cyan-500" />
+              <span>{isSeeding ? 'Seeding...' : 'Seed Sample Invoices'}</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Permission Denied or RBAC Notice Banner */}
+      {isPermissionDenied && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs space-y-1">
+          <div className="flex items-center gap-2 font-bold">
+            <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>Role-Based Access Control / Billing Security Guard Active</span>
+          </div>
+          <p className="text-[11px] text-amber-800 dark:text-amber-400">
+            Firestore security rules scope billing documents: Admins have full access, while Parents are restricted to viewing their own registered family invoices ({user?.email || 'unauthenticated'}). Operating in safe local mirror mode.
+          </p>
+        </div>
+      )}
+
+      {/* Temporary Success Feedback Toast */}
+      {actionSuccessMessage && (
+        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+          <span>{actionSuccessMessage}</span>
+        </div>
+      )}
 
       {/* Main Billing Calculator & Simulator Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -203,7 +245,9 @@ export default function BillingSection() {
           <div className="space-y-3 text-xs">
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Target Family Account:</span>
-              <span className="font-bold text-slate-900 dark:text-white text-sm">Robert Vance (robert.vance@gmail.com)</span>
+              <span className="font-bold text-slate-900 dark:text-white text-sm">
+                {user?.displayName || 'Robert Vance'} ({user?.email || 'robert.vance@gmail.com'})
+              </span>
             </div>
 
             {/* List of Linked Children */}
@@ -333,9 +377,14 @@ export default function BillingSection() {
 
             <button
               onClick={handleIssueFamilyInvoice}
-              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-colors shadow-sm min-h-[44px]"
+              disabled={isSubmitting}
+              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-colors shadow-sm min-h-[44px] flex items-center justify-center gap-2"
             >
-              Issue Consolidated Invoice to Family
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <span>Issue Consolidated Invoice to Family</span>
+              )}
             </button>
           </div>
         </div>
@@ -418,7 +467,7 @@ export default function BillingSection() {
                     <th className="p-3">Sibling Disc.</th>
                     <th className="p-3">Net Total</th>
                     <th className="p-3">Schedule</th>
-                    <th className="p-3">Status</th>
+                    <th className="p-3">Payment Status</th>
                     <th className="p-3">Action</th>
                   </tr>
                 </thead>
@@ -442,13 +491,33 @@ export default function BillingSection() {
                       <td className="p-3 font-mono font-bold text-amber-600 dark:text-amber-300">${inv.netTotal}</td>
                       <td className="p-3 font-mono text-[11px] capitalize">{inv.paymentSchedule}</td>
                       <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                          inv.status === 'Paid'
-                            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
-                            : 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20'
-                        }`}>
-                          {inv.status}
-                        </span>
+                        {isAdmin ? (
+                          <select
+                            value={inv.payment_status}
+                            onChange={(e) => handleUpdatePaymentStatus(inv.id, e.target.value as PaymentStatus)}
+                            className={`text-[10px] font-mono font-bold px-2 py-1 rounded border min-h-[36px] bg-white dark:bg-slate-900 focus:outline-none ${
+                              inv.payment_status === 'paid'
+                                ? 'text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                                : inv.payment_status === 'overdue'
+                                ? 'text-rose-700 dark:text-rose-400 border-rose-500/30'
+                                : 'text-amber-700 dark:text-amber-400 border-amber-500/30'
+                            }`}
+                          >
+                            <option value="pending">PENDING</option>
+                            <option value="paid">PAID</option>
+                            <option value="overdue">OVERDUE</option>
+                          </select>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${
+                            inv.payment_status === 'paid'
+                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
+                              : inv.payment_status === 'overdue'
+                              ? 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20'
+                              : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+                          }`}>
+                            {inv.payment_status}
+                          </span>
+                        )}
                       </td>
                       <td className="p-3">
                         <button
@@ -468,7 +537,7 @@ export default function BillingSection() {
         </div>
       </div>
 
-      {/* Official Printable Family Invoice Modal */}
+      {/* Official Printable Family Invoice Modal with Stripe Checkout */}
       {selectedInvoiceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
           <div className="bg-white text-slate-900 border border-slate-300 rounded-2xl p-4 md:p-8 w-full max-w-screen-md shadow-2xl space-y-6 relative overflow-hidden">
@@ -492,7 +561,15 @@ export default function BillingSection() {
               <div className="text-right">
                 <div className="font-bold text-slate-500 uppercase font-mono text-[10px]">Payment Schedule</div>
                 <div className="font-bold text-slate-900 mt-0.5 capitalize">{selectedInvoiceModal.paymentSchedule} Installments</div>
-                <div className="text-emerald-600 font-bold font-mono">Status: {selectedInvoiceModal.status}</div>
+                <div className={`font-bold font-mono uppercase text-[11px] ${
+                  selectedInvoiceModal.payment_status === 'paid'
+                    ? 'text-emerald-600'
+                    : selectedInvoiceModal.payment_status === 'overdue'
+                    ? 'text-rose-600'
+                    : 'text-amber-600'
+                }`}>
+                  Status: {selectedInvoiceModal.payment_status}
+                </div>
               </div>
             </div>
 
@@ -528,10 +605,19 @@ export default function BillingSection() {
               </div>
             </div>
 
+            {stripeError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs">
+                ⚠️ {stripeError}
+              </div>
+            )}
+
             {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex flex-wrap justify-end gap-3 pt-2">
               <button
-                onClick={() => setSelectedInvoiceModal(null)}
+                onClick={() => {
+                  setSelectedInvoiceModal(null);
+                  setStripeError(null);
+                }}
                 className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 min-h-[44px]"
               >
                 Close
@@ -542,6 +628,25 @@ export default function BillingSection() {
               >
                 <span>🖨️ Print / Save Official PDF</span>
               </button>
+              {selectedInvoiceModal.payment_status !== 'paid' ? (
+                <button
+                  onClick={() => handleStripeCheckout(selectedInvoiceModal.id)}
+                  disabled={isProcessingStripe}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow min-h-[44px] transition-all"
+                >
+                  {isProcessingStripe ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CreditCard className="w-4 h-4" />
+                  )}
+                  <span>Pay with Stripe (${selectedInvoiceModal.netTotal}.00)</span>
+                </button>
+              ) : (
+                <span className="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Paid in Full
+                </span>
+              )}
             </div>
           </div>
         </div>
