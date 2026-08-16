@@ -127,11 +127,11 @@ export default function PerformanceTimelineChart({
         </div>
 
         {/* Metric View Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-xs self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-xs w-full md:w-auto">
           <button
             id="metric-view-composite"
             onClick={() => setMetricView('composite')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+            className={`px-3 py-2 min-h-[44px] flex-1 sm:flex-initial text-center justify-center flex items-center rounded-lg font-bold transition-all ${
               metricView === 'composite'
                 ? 'bg-cyan-500 text-slate-950 shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -142,7 +142,7 @@ export default function PerformanceTimelineChart({
           <button
             id="metric-view-form-endurance"
             onClick={() => setMetricView('form_endurance')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+            className={`px-3 py-2 min-h-[44px] flex-1 sm:flex-initial text-center justify-center flex items-center rounded-lg font-bold transition-all ${
               metricView === 'form_endurance'
                 ? 'bg-emerald-600 text-white shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -153,7 +153,7 @@ export default function PerformanceTimelineChart({
           <button
             id="metric-view-reps-tempo"
             onClick={() => setMetricView('reps_tempo')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+            className={`px-3 py-2 min-h-[44px] flex-1 sm:flex-initial text-center justify-center flex items-center rounded-lg font-bold transition-all ${
               metricView === 'reps_tempo'
                 ? 'bg-amber-600 text-white shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -164,7 +164,7 @@ export default function PerformanceTimelineChart({
           <button
             id="metric-view-all"
             onClick={() => setMetricView('all')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+            className={`px-3 py-2 min-h-[44px] flex-1 sm:flex-initial text-center justify-center flex items-center rounded-lg font-bold transition-all ${
               metricView === 'all'
                 ? 'bg-purple-600 text-white shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'

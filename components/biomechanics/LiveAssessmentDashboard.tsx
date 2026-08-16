@@ -202,7 +202,7 @@ export default function LiveAssessmentDashboard() {
       )}
 
       {/* Dual Analytics Grid: Performance Timeline + Developmental Spider Radar */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <PerformanceTimelineChart
           assessments={assessments}
           athleteName={selectedAthleteId !== 'all' ? currentAthleteObj?.name : undefined}
@@ -217,7 +217,7 @@ export default function LiveAssessmentDashboard() {
       </div>
 
       {/* Real-time Assessment Evaluation Ledger */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+      <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <Flame className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
@@ -235,118 +235,220 @@ export default function LiveAssessmentDashboard() {
             No evaluations match the active filter criteria.
           </div>
         ) : (
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-mono text-slate-500 uppercase tracking-wider">
-                  <th className="py-2.5 px-3">Athlete</th>
-                  <th className="py-2.5 px-3">Sport & Drill SOP</th>
-                  <th className="py-2.5 px-3 text-center">Data Source</th>
-                  <th className="py-2.5 px-3 text-center">Score / Grade</th>
-                  <th className="py-2.5 px-3 text-center">Valid Reps</th>
-                  <th className="py-2.5 px-3">Coach / Notes</th>
-                  <th className="py-2.5 px-3 text-right">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
-                {assessments.map((item) => {
-                  const dateObj = typeof item.created_at === 'string' ? new Date(item.created_at) : new Date();
-                  const timeStr = dateObj.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  }) + ' ' + dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          <>
+            {/* Mobile Card List View (<1024px) */}
+            <div className="block lg:hidden flex flex-col gap-3">
+              {assessments.map((item) => {
+                const dateObj = typeof item.created_at === 'string' ? new Date(item.created_at) : new Date();
+                const timeStr = dateObj.toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                }) + ' ' + dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-                  return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-950/50 transition-colors"
-                    >
-                      <td className="py-3 px-3">
-                        <div className="font-bold text-slate-900 dark:text-white">
+                return (
+                  <div
+                    key={item.id}
+                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs"
+                  >
+                    {/* Header: Athlete Name, ID Badge, and Data Source Badge */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-sm text-slate-900 dark:text-white">
                           {item.athlete_name}
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono">
                           ID: {item.athlete_id}
                         </div>
-                      </td>
+                      </div>
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold ${
+                          item.data_source === 'manual'
+                            ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20'
+                            : 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20'
+                        }`}
+                      >
+                        {item.data_source === 'manual' ? 'Manual Coach' : 'AI Agentic'}
+                      </span>
+                    </div>
 
-                      <td className="py-3 px-3">
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">
+                    {/* Body: Sport, Drill/SOP, and Score/Grade Badge */}
+                    <div className="flex items-center justify-between gap-2 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800/80">
+                      <div>
+                        <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
                           {item.sport}
                         </div>
                         <div className="text-[11px] text-slate-500 dark:text-slate-400">
                           {item.grading_rubric_sop || item.exercise_type}
                         </div>
-                      </td>
-
-                      <td className="py-3 px-3 text-center">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded font-mono text-[10px] font-bold ${
-                            item.data_source === 'manual'
-                              ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20'
-                              : 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20'
-                          }`}
-                        >
-                          {item.data_source === 'manual' ? 'Manual Coach' : 'AI Agentic'}
-                        </span>
-                      </td>
-
-                      <td className="py-3 px-3 text-center">
-                        <div className="font-mono font-black text-cyan-600 dark:text-cyan-400 text-sm">
-                          {item.computed_score}
+                      </div>
+                      <div className="text-right flex flex-col items-end">
+                        <div className="flex items-center gap-1.5 font-mono font-black text-sm text-cyan-600 dark:text-cyan-400">
+                          <span>{item.computed_score} pts</span>
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              (item.rubric_grade || 'A') === 'A'
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                            }`}
+                          >
+                            Grade {item.rubric_grade || 'A'}
+                          </span>
                         </div>
-                        <span
-                          className={`text-[10px] font-bold font-mono px-1.5 py-0.2 rounded ${
-                            (item.rubric_grade || 'A') === 'A'
-                              ? 'text-emerald-600 dark:text-emerald-400'
-                              : 'text-amber-600 dark:text-amber-400'
-                          }`}
-                        >
-                          Grade {item.rubric_grade || 'A'}
-                        </span>
-                      </td>
+                      </div>
+                    </div>
 
-                      <td className="py-3 px-3 text-center font-mono">
-                        <span className="font-bold text-slate-900 dark:text-white">
-                          {item.quantitative_metrics?.valid_reps ?? '-'}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block">
-                          {item.quantitative_metrics?.duration_seconds ? `${item.quantitative_metrics.duration_seconds}s` : ''}
-                        </span>
-                      </td>
+                    {/* Coach Notes */}
+                    {item.qualitative_observations?.coach_notes && (
+                      <div className="p-2.5 rounded-xl bg-slate-100/80 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] text-slate-600 dark:text-slate-300 italic">
+                        &quot;{item.qualitative_observations.coach_notes}&quot;
+                      </div>
+                    )}
 
-                      <td className="py-3 px-3 max-w-xs">
-                        <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
-                          {item.coach_name || 'Coach Evaluation'}
-                        </div>
-                        {item.qualitative_observations?.coach_notes && (
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 italic truncate">
-                            &quot;{item.qualitative_observations.coach_notes}&quot;
+                    {/* Fault Tags */}
+                    {item.qualitative_observations?.fault_tags && item.qualitative_observations.fault_tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {item.qualitative_observations.fault_tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 font-medium"
+                          >
+                            {tag.replace('_', ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Footer: Symmetrical Spacing showing Valid Reps and Date */}
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200/80 dark:border-slate-800/80 font-mono text-slate-500 dark:text-slate-400">
+                      <div>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          Valid Reps: {item.quantitative_metrics?.valid_reps ?? '-'}
+                        </span>
+                        {item.quantitative_metrics?.duration_seconds ? (
+                          <span className="text-[10px] ml-1">({item.quantitative_metrics.duration_seconds}s)</span>
+                        ) : null}
+                      </div>
+                      <div className="text-[10px]">{timeStr}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View (>=1024px) */}
+            <div className="overflow-x-auto w-full hidden lg:block">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-mono text-slate-500 uppercase tracking-wider">
+                    <th className="py-2.5 px-3">Athlete</th>
+                    <th className="py-2.5 px-3">Sport & Drill SOP</th>
+                    <th className="py-2.5 px-3 text-center">Data Source</th>
+                    <th className="py-2.5 px-3 text-center">Score / Grade</th>
+                    <th className="py-2.5 px-3 text-center">Valid Reps</th>
+                    <th className="py-2.5 px-3">Coach / Notes</th>
+                    <th className="py-2.5 px-3 text-right">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
+                  {assessments.map((item) => {
+                    const dateObj = typeof item.created_at === 'string' ? new Date(item.created_at) : new Date();
+                    const timeStr = dateObj.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    }) + ' ' + dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-950/50 transition-colors"
+                      >
+                        <td className="py-3 px-3">
+                          <div className="font-bold text-slate-900 dark:text-white">
+                            {item.athlete_name}
                           </div>
-                        )}
-                        {item.qualitative_observations?.fault_tags && item.qualitative_observations.fault_tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {item.qualitative_observations.fault_tags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
-                              >
-                                {tag.replace('_', ' ')}
-                              </span>
-                            ))}
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            ID: {item.athlete_id}
                           </div>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className="py-3 px-3 text-right font-mono text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                        {timeStr}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        <td className="py-3 px-3">
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">
+                            {item.sport}
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {item.grading_rubric_sop || item.exercise_type}
+                          </div>
+                        </td>
+
+                        <td className="py-3 px-3 text-center">
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded font-mono text-[10px] font-bold ${
+                              item.data_source === 'manual'
+                                ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20'
+                                : 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20'
+                            }`}
+                          >
+                            {item.data_source === 'manual' ? 'Manual Coach' : 'AI Agentic'}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-3 text-center">
+                          <div className="font-mono font-black text-cyan-600 dark:text-cyan-400 text-sm">
+                            {item.computed_score}
+                          </div>
+                          <span
+                            className={`text-[10px] font-bold font-mono px-1.5 py-0.2 rounded ${
+                              (item.rubric_grade || 'A') === 'A'
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-amber-600 dark:text-amber-400'
+                            }`}
+                          >
+                            Grade {item.rubric_grade || 'A'}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-3 text-center font-mono">
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {item.quantitative_metrics?.valid_reps ?? '-'}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            {item.quantitative_metrics?.duration_seconds ? `${item.quantitative_metrics.duration_seconds}s` : ''}
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-3 max-w-xs">
+                          <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                            {item.coach_name || 'Coach Evaluation'}
+                          </div>
+                          {item.qualitative_observations?.coach_notes && (
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 italic truncate">
+                              &quot;{item.qualitative_observations.coach_notes}&quot;
+                            </div>
+                          )}
+                          {item.qualitative_observations?.fault_tags && item.qualitative_observations.fault_tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {item.qualitative_observations.fault_tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                                >
+                                  {tag.replace('_', ' ')}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-3 text-right font-mono text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          {timeStr}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

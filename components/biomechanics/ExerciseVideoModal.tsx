@@ -177,8 +177,9 @@ export default function ExerciseVideoModal({
   isOpen,
   onClose
 }: ExerciseVideoModalProps) {
-  const [selectedId, setSelectedId] = useState<string>(exerciseId);
-  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [selectedId, setSelectedId] = useState<string>(exerciseId || 'sprint_accel');
+  const [prevExerciseId, setPrevExerciseId] = useState<string>(exerciseId || '');
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
   const [showSkeleton, setShowSkeleton] = useState<boolean>(true);
   const [showHUD, setShowHUD] = useState<boolean>(true);
@@ -186,13 +187,14 @@ export default function ExerciseVideoModal({
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const currentGuide = EXERCISE_GUIDES[selectedId] || EXERCISE_GUIDES['sprint_accel'];
-
-  useEffect(() => {
+  if (exerciseId !== prevExerciseId) {
+    setPrevExerciseId(exerciseId || '');
     if (exerciseId && EXERCISE_GUIDES[exerciseId]) {
       setSelectedId(exerciseId);
     }
-  }, [exerciseId]);
+  }
+
+  const currentGuide = EXERCISE_GUIDES[selectedId] || EXERCISE_GUIDES['sprint_accel'];
 
   useEffect(() => {
     if (videoRef.current) {
@@ -466,7 +468,7 @@ export default function ExerciseVideoModal({
                 {currentGuide.coachingTips.map((tip, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-cyan-400 font-bold font-mono">#{idx + 1}</span>
-                    <span>"{tip}"</span>
+                    <span>&quot;{tip}&quot;</span>
                   </li>
                 ))}
               </ul>

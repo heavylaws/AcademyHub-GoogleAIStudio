@@ -29,11 +29,27 @@ export default function HomePage() {
   const { user, role } = useAuth();
 
   // Dynamic real-time stats count
-  const [athleteCount, setAthleteCount] = useState<number>(4);
-  const [sessionCount, setSessionCount] = useState<number>(3);
+  const [athleteCount, setAthleteCount] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const savedAth = localStorage.getItem('academyhub_athletes');
+      if (savedAth) {
+        try { return JSON.parse(savedAth).length; } catch {}
+      }
+    }
+    return 4;
+  });
+  const [sessionCount, setSessionCount] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const savedSess = localStorage.getItem('academyhub_sessions');
+      if (savedSess) {
+        try { return JSON.parse(savedSess).length; } catch {}
+      }
+    }
+    return 3;
+  });
 
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const handleStorage = () => {
       const savedAth = localStorage.getItem('academyhub_athletes');
       if (savedAth) {
         try { setAthleteCount(JSON.parse(savedAth).length); } catch {}
@@ -42,8 +58,10 @@ export default function HomePage() {
       if (savedSess) {
         try { setSessionCount(JSON.parse(savedSess).length); } catch {}
       }
-    }
-  }, [activeTab]);
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const currentRole = role || (user ? 'Authenticated' : 'Guest');
   const currentUserName = user?.displayName || user?.email?.split('@')[0] || (user ? 'User' : 'Guest');

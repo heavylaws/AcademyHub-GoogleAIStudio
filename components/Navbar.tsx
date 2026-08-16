@@ -97,7 +97,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-1.5 lg:py-0 lg:h-16 flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-400 p-0.5 flex items-center justify-center shadow-lg shadow-cyan-500/20">
             <div className="w-full h-full bg-slate-900 dark:bg-slate-950 rounded-[10px] flex items-center justify-center">
@@ -117,9 +117,9 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
           </div>
         </div>
 
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-2 sm:gap-4">
-          <nav className="flex items-center gap-1 sm:gap-2">
+        {/* Desktop & Tablet Nav */}
+        <div className="hidden md:flex items-center gap-1.5 lg:gap-4">
+          <nav className="flex items-center gap-1 lg:gap-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -127,14 +127,14 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center justify-center gap-2 px-3 min-h-[44px] rounded-lg text-xs font-medium transition-all ${
+                  className={`flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-2 lg:px-3 min-h-[44px] min-w-[44px] lg:min-w-0 rounded-lg text-center text-xs font-medium transition-all ${
                     isActive
-                      ? 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 shadow-sm'
+                      ? 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 shadow-sm font-semibold'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400'}`} />
-                  <span className="hidden lg:inline">{item.label}</span>
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400'}`} />
+                  <span className="text-[10px] lg:text-xs leading-tight whitespace-nowrap">{item.label}</span>
                 </button>
               );
             })}

@@ -432,7 +432,7 @@ export default function AthleteProfileSection() {
       </div>
 
       {/* Real-time Performance Charts & Developmental Radars */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <PerformanceTimelineChart
           assessments={assessments}
           athleteName={activeAthlete.name}
