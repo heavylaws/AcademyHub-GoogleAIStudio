@@ -14,6 +14,7 @@ import {
   Assessment,
   CreateAssessmentInput,
   DataSource,
+  PipelineStatus,
   calculateComputedScore,
   deriveRubricGrade,
   RubricGrade,
@@ -119,20 +120,13 @@ export function processDeterministicAssessment(
     coach_id: input.coach_id || 'coach_manual_entry',
     coach_name: input.coach_name || 'Coach Assessment',
     data_source: 'manual', // Explicitly marked as manual coach entry
+    pipeline_status: 'deterministic_fallback' as PipelineStatus,
     quantitative_metrics: quantitative,
     qualitative_observations: qualitative,
     media_references: media,
     computed_score: computedScore,
     rubric_grade: rubricGrade,
     created_at: new Date().toISOString(),
-    agent_insights: {
-      kinematicAnalysis: `Manual Coach observation recorded ${quantitative.valid_reps} valid reps over ${quantitative.duration_seconds}s with form score of ${qualitative.form_quality_score}/100.`,
-      fatigueAnalysis: `Endurance score rated at ${qualitative.endurance_score}/100 based on session pacing.`,
-      faultDiagnostics: qualitative.fault_tags.length > 0 ? qualitative.fault_tags : ['Zero movement faults flagged'],
-      prescriptiveDrills: ['Continue standard drill progression', 'Maintain kinetic chain alignment'],
-      confidenceScore: 1.0,
-      processingPipeline: 'deterministic_manual',
-    },
   };
 }
 
@@ -168,30 +162,22 @@ export async function processAIAssessment(
       return {
         ...data.assessment,
         id: docId,
-        data_source: 'ai_agentic' as DataSource, // Gemini assessed
+        data_source: (data.assessment.data_source || 'ai_agentic') as DataSource,
+        pipeline_status: (data.assessment.pipeline_status || 'ai_evaluated') as PipelineStatus,
+        error_detail: data.assessment.error_detail,
         created_at: data.assessment.created_at || new Date().toISOString(),
       };
     }
 
     throw new Error('Invalid payload structure received from Gemini evaluation pipeline');
   } catch (error) {
-    console.warn('AI pipeline invocation warning, utilizing deterministic fallback with AI flag:', error);
-    // Graceful fallback keeping AI indicator with notice
+    console.warn('AI pipeline invocation failed, returning deterministic fallback:', error);
+    // Graceful fallback — no fake AI insights
     const fallback = processDeterministicAssessment(input, docId);
     return {
       ...fallback,
-      data_source: 'ai_agentic',
-      agent_insights: {
-        kinematicAnalysis: `Gemini AI evaluated kinematics: Verified ${fallback.quantitative_metrics.valid_reps} reps with ${fallback.qualitative_observations.form_quality_score}% kinematic form precision.`,
-        fatigueAnalysis: `Multi-agent neuromuscular analysis: Pacing calculated at ${fallback.quantitative_metrics.cadence_reps_per_minute || 20} reps/min with endurance index ${fallback.qualitative_observations.endurance_score}%.`,
-        faultDiagnostics: fallback.qualitative_observations.fault_tags.length > 0 ? fallback.qualitative_observations.fault_tags : ['Kinematic alignment nominal'],
-        prescriptiveDrills: [
-          `Targeted ${fallback.sport} eccentric stabilization drills`,
-          `Joint alignment reinforcement for ${fallback.exercise_type}`,
-        ],
-        confidenceScore: 0.96,
-        processingPipeline: 'gemini_multi_agent',
-      },
+      pipeline_status: 'ai_error' as PipelineStatus,
+      error_detail: error instanceof Error ? error.message : 'AI pipeline request failed',
     };
   }
 }

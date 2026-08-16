@@ -46,57 +46,48 @@ export async function POST(req: NextRequest) {
     );
     const baseRubricGrade = deriveRubricGrade(baseComputedScore);
 
-    // If no Gemini API key configured, return high-fidelity multi-agent synthetic evaluation
+    // If no Gemini API key configured, return deterministic score only — no fake AI insights
     if (!apiKey) {
-      const simulatedEvaluation = {
-        id: input.id || `asm_ai_${Date.now()}`,
-        athlete_id: input.athlete_id,
-        athlete_name: input.athlete_name,
-        parent_email: input.parent_email,
-        sport: input.sport,
-        exercise_type: input.exercise_type,
-        grading_rubric_sop: input.grading_rubric_sop || `${input.sport} - ${input.exercise_type} SOP`,
-        coach_id: input.coach_id || 'coach_gemini_agent',
-        coach_name: input.coach_name || 'Gemini Multi-Agent Biomechanics AI',
-        data_source: 'ai_agentic',
-        quantitative_metrics: quantitative,
-        qualitative_observations: qualitative,
-        media_references: {
-          video_storage_path: input.media_references?.video_storage_path,
-          smart_grid_processed: true,
-          thumbnail_url: input.media_references?.thumbnail_url,
-          keypoints_json_path: input.media_references?.keypoints_json_path,
+      return NextResponse.json({
+        assessment: {
+          id: input.id || `asm_det_${Date.now()}`,
+          athlete_id: input.athlete_id,
+          athlete_name: input.athlete_name,
+          parent_email: input.parent_email,
+          sport: input.sport,
+          exercise_type: input.exercise_type,
+          grading_rubric_sop: input.grading_rubric_sop || `${input.sport} - ${input.exercise_type} SOP`,
+          coach_id: input.coach_id || 'coach_manual_entry',
+          coach_name: input.coach_name || 'Coach',
+          data_source: 'manual',
+          pipeline_status: 'deterministic_fallback',
+          quantitative_metrics: quantitative,
+          qualitative_observations: qualitative,
+          media_references: {
+            video_storage_path: input.media_references?.video_storage_path,
+            smart_grid_processed: false,
+            thumbnail_url: input.media_references?.thumbnail_url,
+            keypoints_json_path: input.media_references?.keypoints_json_path,
+          },
+          computed_score: baseComputedScore,
+          rubric_grade: baseRubricGrade,
+          created_at: new Date().toISOString(),
         },
-        computed_score: baseComputedScore,
-        rubric_grade: baseRubricGrade,
-        created_at: new Date().toISOString(),
-        agent_insights: {
-          kinematicAnalysis: `Multi-agent kinematic analysis: Athlete executed ${quantitative.valid_reps} reps with ${qualitative.form_quality_score}% kinematic path efficiency. Joint angles maintained optimal ROM.`,
-          fatigueAnalysis: `Neuromuscular fatigue modeling: Sustained ${quantitative.cadence_reps_per_minute || 20} reps/min cadence across ${quantitative.duration_seconds}s interval with ${qualitative.endurance_score}% stamina retention.`,
-          faultDiagnostics: qualitative.fault_tags.length > 0 ? qualitative.fault_tags : ['Zero kinematic breakdown detected'],
-          prescriptiveDrills: [
-            `Progressive eccentric overload for ${input.exercise_type}`,
-            `Kinetic chain stabilization & deceleration drills for ${input.sport}`,
-          ],
-          confidenceScore: 0.98,
-          processingPipeline: 'gemini_multi_agent',
-        },
-      };
-
-      return NextResponse.json({ assessment: simulatedEvaluation });
+      });
     }
 
-    // 2. Instantiate GoogleGenAI client with user-agent header
-    const ai = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
+    // 2. Attempt Gemini AI evaluation
+    try {
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
         },
-      },
-    });
+      });
 
-    const prompt = `You are the AcademyHub Multi-Agent Biomechanics & Kinematic Assessment Engine.
+      const prompt = `You are the AcademyHub Multi-Agent Biomechanics & Kinematic Assessment Engine.
 Process the incoming athletic performance data through the multi-agent biomechanics pipeline:
 - Agent 1 (Kinematics & Joint Trajectory): Analyzes movement quality, joint angles, depth, symmetry.
 - Agent 2 (Neuromuscular Fatigue & Cadence): Evaluates rep tempo, power decline, stamina.
@@ -117,112 +108,144 @@ Input Assessment Data:
 
 Provide an objective assessment score (0-100), letter grade ('A', 'B', 'C', 'D'), synthesis of notes, and detailed agent insights.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            computed_score: {
-              type: Type.NUMBER,
-              description: 'Refined biomechanical assessment score between 0 and 100',
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              computed_score: {
+                type: Type.NUMBER,
+                description: 'Refined biomechanical assessment score between 0 and 100',
+              },
+              rubric_grade: {
+                type: Type.STRING,
+                description: 'Grade rubric letter: A, B, C, or D',
+              },
+              enhanced_coach_notes: {
+                type: Type.STRING,
+                description: 'Comprehensive, structured coach diagnostic notes synthesized by the AI pipeline',
+              },
+              kinematicAnalysis: {
+                type: Type.STRING,
+                description: 'Detailed kinematic path, joint angle, and symmetry analysis',
+              },
+              fatigueAnalysis: {
+                type: Type.STRING,
+                description: 'Neuromuscular fatigue, rep cadence, and endurance degradation evaluation',
+              },
+              faultDiagnostics: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: 'List of detected biomechanical faults or kinematic risk tags',
+              },
+              prescriptiveDrills: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: 'Prescriptive corrective drills for the athlete',
+              },
+              confidenceScore: {
+                type: Type.NUMBER,
+                description: 'Model confidence score between 0.0 and 1.0',
+              },
             },
-            rubric_grade: {
-              type: Type.STRING,
-              description: 'Grade rubric letter: A, B, C, or D',
-            },
-            enhanced_coach_notes: {
-              type: Type.STRING,
-              description: 'Comprehensive, structured coach diagnostic notes synthesized by the AI pipeline',
-            },
-            kinematicAnalysis: {
-              type: Type.STRING,
-              description: 'Detailed kinematic path, joint angle, and symmetry analysis',
-            },
-            fatigueAnalysis: {
-              type: Type.STRING,
-              description: 'Neuromuscular fatigue, rep cadence, and endurance degradation evaluation',
-            },
-            faultDiagnostics: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: 'List of detected biomechanical faults or kinematic risk tags',
-            },
-            prescriptiveDrills: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: 'Prescriptive corrective drills for the athlete',
-            },
-            confidenceScore: {
-              type: Type.NUMBER,
-              description: 'Model confidence score between 0.0 and 1.0',
-            },
+            required: [
+              'computed_score',
+              'rubric_grade',
+              'enhanced_coach_notes',
+              'kinematicAnalysis',
+              'fatigueAnalysis',
+              'faultDiagnostics',
+              'prescriptiveDrills',
+              'confidenceScore',
+            ],
           },
-          required: [
-            'computed_score',
-            'rubric_grade',
-            'enhanced_coach_notes',
-            'kinematicAnalysis',
-            'fatigueAnalysis',
-            'faultDiagnostics',
-            'prescriptiveDrills',
-            'confidenceScore',
-          ],
         },
-      },
-    });
+      });
 
-    const parsed = JSON.parse(response.text?.trim() || '{}');
+      const parsed = JSON.parse(response.text?.trim() || '{}');
 
-    const finalScore =
-      typeof parsed.computed_score === 'number'
-        ? Math.max(0, Math.min(100, Math.round(parsed.computed_score * 10) / 10))
-        : baseComputedScore;
+      const finalScore =
+        typeof parsed.computed_score === 'number'
+          ? Math.max(0, Math.min(100, Math.round(parsed.computed_score * 10) / 10))
+          : baseComputedScore;
 
-    const finalGrade = parsed.rubric_grade || deriveRubricGrade(finalScore);
+      const finalGrade = parsed.rubric_grade || deriveRubricGrade(finalScore);
 
-    const evaluatedAssessment = {
-      id: input.id || `asm_ai_${Date.now()}`,
-      athlete_id: input.athlete_id,
-      athlete_name: input.athlete_name,
-      parent_email: input.parent_email,
-      sport: input.sport,
-      exercise_type: input.exercise_type,
-      grading_rubric_sop: input.grading_rubric_sop || `${input.sport} - ${input.exercise_type} SOP`,
-      coach_id: input.coach_id || 'coach_gemini_agent',
-      coach_name: input.coach_name || 'Gemini Multi-Agent AI Pipeline',
-      data_source: 'ai_agentic',
-      quantitative_metrics: quantitative,
-      qualitative_observations: {
-        form_quality_score: qualitative.form_quality_score,
-        endurance_score: qualitative.endurance_score,
-        fault_tags: parsed.faultDiagnostics && parsed.faultDiagnostics.length > 0
-          ? parsed.faultDiagnostics
-          : qualitative.fault_tags,
-        coach_notes: parsed.enhanced_coach_notes || qualitative.coach_notes,
-      },
-      media_references: {
-        video_storage_path: input.media_references?.video_storage_path,
-        smart_grid_processed: true,
-        thumbnail_url: input.media_references?.thumbnail_url,
-        keypoints_json_path: input.media_references?.keypoints_json_path,
-      },
-      computed_score: finalScore,
-      rubric_grade: finalGrade,
-      created_at: new Date().toISOString(),
-      agent_insights: {
-        kinematicAnalysis: parsed.kinematicAnalysis || 'Kinematics assessed through multi-agent pipeline.',
-        fatigueAnalysis: parsed.fatigueAnalysis || 'Neuromuscular pacing evaluated.',
-        faultDiagnostics: parsed.faultDiagnostics || qualitative.fault_tags,
-        prescriptiveDrills: parsed.prescriptiveDrills || ['Maintain standard movement progression'],
-        confidenceScore: typeof parsed.confidenceScore === 'number' ? parsed.confidenceScore : 0.95,
-        processingPipeline: 'gemini_multi_agent',
-      },
-    };
+      const evaluatedAssessment = {
+        id: input.id || `asm_ai_${Date.now()}`,
+        athlete_id: input.athlete_id,
+        athlete_name: input.athlete_name,
+        parent_email: input.parent_email,
+        sport: input.sport,
+        exercise_type: input.exercise_type,
+        grading_rubric_sop: input.grading_rubric_sop || `${input.sport} - ${input.exercise_type} SOP`,
+        coach_id: input.coach_id || 'coach_gemini_agent',
+        coach_name: input.coach_name || 'Coach',
+        data_source: 'ai_agentic',
+        pipeline_status: 'ai_evaluated',
+        quantitative_metrics: quantitative,
+        qualitative_observations: {
+          form_quality_score: qualitative.form_quality_score,
+          endurance_score: qualitative.endurance_score,
+          fault_tags: parsed.faultDiagnostics && parsed.faultDiagnostics.length > 0
+            ? parsed.faultDiagnostics
+            : qualitative.fault_tags,
+          coach_notes: parsed.enhanced_coach_notes || qualitative.coach_notes,
+        },
+        media_references: {
+          video_storage_path: input.media_references?.video_storage_path,
+          smart_grid_processed: true,
+          thumbnail_url: input.media_references?.thumbnail_url,
+          keypoints_json_path: input.media_references?.keypoints_json_path,
+        },
+        computed_score: finalScore,
+        rubric_grade: finalGrade,
+        created_at: new Date().toISOString(),
+        agent_insights: {
+          kinematicAnalysis: parsed.kinematicAnalysis || 'Kinematics assessed through multi-agent pipeline.',
+          fatigueAnalysis: parsed.fatigueAnalysis || 'Neuromuscular pacing evaluated.',
+          faultDiagnostics: parsed.faultDiagnostics || qualitative.fault_tags,
+          prescriptiveDrills: parsed.prescriptiveDrills || ['Maintain standard movement progression'],
+          confidenceScore: typeof parsed.confidenceScore === 'number' ? parsed.confidenceScore : 0.95,
+          processingPipeline: 'gemini_multi_agent',
+        },
+      };
 
-    return NextResponse.json({ assessment: evaluatedAssessment });
+      return NextResponse.json({ assessment: evaluatedAssessment });
+    } catch (aiError: any) {
+      // Gemini call failed or returned malformed JSON — return deterministic score with error detail (HTTP 200)
+      console.error('Gemini AI evaluation failed, returning deterministic fallback:', aiError);
+      return NextResponse.json({
+        assessment: {
+          id: input.id || `asm_det_${Date.now()}`,
+          athlete_id: input.athlete_id,
+          athlete_name: input.athlete_name,
+          parent_email: input.parent_email,
+          sport: input.sport,
+          exercise_type: input.exercise_type,
+          grading_rubric_sop: input.grading_rubric_sop || `${input.sport} - ${input.exercise_type} SOP`,
+          coach_id: input.coach_id || 'coach_manual_entry',
+          coach_name: input.coach_name || 'Coach',
+          data_source: 'manual',
+          pipeline_status: 'ai_error',
+          error_detail: aiError.message || 'Gemini evaluation failed',
+          quantitative_metrics: quantitative,
+          qualitative_observations: qualitative,
+          media_references: {
+            video_storage_path: input.media_references?.video_storage_path,
+            smart_grid_processed: false,
+            thumbnail_url: input.media_references?.thumbnail_url,
+            keypoints_json_path: input.media_references?.keypoints_json_path,
+          },
+          computed_score: baseComputedScore,
+          rubric_grade: baseRubricGrade,
+          created_at: new Date().toISOString(),
+        },
+      });
+    }
   } catch (error: any) {
     console.error('Error in Gemini biomechanics evaluation pipeline:', error);
     return NextResponse.json(
@@ -231,3 +254,4 @@ Provide an objective assessment score (0-100), letter grade ('A', 'B', 'C', 'D')
     );
   }
 }
+

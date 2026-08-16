@@ -26,6 +26,7 @@ import {
   calculateComputedScore,
   deriveRubricGrade,
   DataSource,
+  PipelineStatus,
 } from '../types/assessment';
 
 /**
@@ -44,6 +45,8 @@ export const assessmentConverter: FirestoreDataConverter<Assessment> = {
       coach_id: assessment.coach_id || null,
       coach_name: assessment.coach_name || null,
       data_source: assessment.data_source || ('manual' as DataSource),
+      pipeline_status: assessment.pipeline_status || null,
+      error_detail: assessment.error_detail || null,
       quantitative_metrics: {
         valid_reps: Number(assessment.quantitative_metrics?.valid_reps || 0),
         avg_depth_angle:
@@ -134,6 +137,8 @@ export const assessmentConverter: FirestoreDataConverter<Assessment> = {
       coach_id: data.coach_id || undefined,
       coach_name: data.coach_name || undefined,
       data_source: (data.data_source as DataSource) || 'manual',
+      pipeline_status: (data.pipeline_status as PipelineStatus) || undefined,
+      error_detail: data.error_detail || undefined,
       quantitative_metrics,
       qualitative_observations,
       media_references,

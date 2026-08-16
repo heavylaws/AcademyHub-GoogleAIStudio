@@ -7,6 +7,8 @@ import type { Timestamp } from 'firebase/firestore';
 
 export type DataSource = 'manual' | 'ai_agentic';
 
+export type PipelineStatus = 'ai_evaluated' | 'deterministic_fallback' | 'ai_error';
+
 export interface QuantitativeMetrics {
   valid_reps: number;
   avg_depth_angle?: number;
@@ -54,6 +56,8 @@ export interface Assessment {
   coach_id?: string;
   coach_name?: string;
   data_source: DataSource;
+  pipeline_status?: PipelineStatus;
+  error_detail?: string;
   quantitative_metrics: QuantitativeMetrics;
   qualitative_observations: QualitativeObservations;
   media_references: MediaReferences;

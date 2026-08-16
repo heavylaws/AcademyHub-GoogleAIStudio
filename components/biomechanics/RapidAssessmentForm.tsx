@@ -525,16 +525,12 @@ export default function RapidAssessmentForm({
             </div>
           </div>
 
-          {/* Multi-Agent Insights Breakdown if present */}
-          {lastSavedAssessment.agent_insights && (
+          {/* Multi-Agent Insights Breakdown — only shown for real AI evaluations */}
+          {lastSavedAssessment.pipeline_status === 'ai_evaluated' && lastSavedAssessment.agent_insights ? (
             <div className="max-w-lg mx-auto p-4 rounded-2xl bg-purple-500/5 dark:bg-purple-950/20 border border-purple-500/20 text-left space-y-2 text-xs">
               <div className="flex items-center gap-1.5 font-bold text-purple-700 dark:text-purple-300">
                 <Bot className="w-4 h-4" />
-                <span>
-                  {lastSavedAssessment.agent_insights.processingPipeline === 'gemini_multi_agent'
-                    ? 'Gemini Multi-Agent Biomechanics Synthesis'
-                    : 'Deterministic Coach Summary'}
-                </span>
+                <span>Gemini Multi-Agent Biomechanics Synthesis</span>
               </div>
               <p className="text-[11px] text-slate-600 dark:text-slate-300">
                 {lastSavedAssessment.agent_insights.kinematicAnalysis}
@@ -550,6 +546,18 @@ export default function RapidAssessmentForm({
                     </span>
                   ))}
                 </div>
+              )}
+            </div>
+          ) : (
+            <div className="max-w-lg mx-auto p-3 rounded-2xl bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/20 text-left text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+              <span className="text-amber-700 dark:text-amber-300 font-semibold">
+                Deterministic scoring — AI analysis unavailable
+              </span>
+              {lastSavedAssessment.error_detail && (
+                <span className="text-[10px] text-slate-500 font-mono ml-auto truncate max-w-[200px]" title={lastSavedAssessment.error_detail}>
+                  {lastSavedAssessment.error_detail}
+                </span>
               )}
             </div>
           )}
