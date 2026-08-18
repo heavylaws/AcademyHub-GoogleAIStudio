@@ -136,16 +136,22 @@ export function processDeterministicAssessment(
  */
 export async function processAIAssessment(
   input: CreateAssessmentInput,
-  id?: string
+  id?: string,
+  authToken?: string
 ): Promise<EvaluatedAssessment> {
   const docId = id || `asm_ai_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
     const response = await fetch('/api/biomechanics/evaluate', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         ...input,
         id: docId,
@@ -190,12 +196,13 @@ export async function processAIAssessment(
  */
 export async function evaluateAssessment(
   input: CreateAssessmentInput,
-  id?: string
+  id?: string,
+  authToken?: string
 ): Promise<EvaluatedAssessment> {
   const isAI = isAIPipelineEnabled();
 
   if (isAI) {
-    return await processAIAssessment(input, id);
+    return await processAIAssessment(input, id, authToken);
   } else {
     return processDeterministicAssessment(input, id);
   }

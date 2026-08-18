@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react';
 import { Sparkles, Bot, Send, Loader2, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '@/lib/authContext';
 
 export default function GeminiAdvisor() {
+  const { user } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [context, setContext] = useState('Vertical Jump & Kinematic Explosiveness');
   const [response, setResponse] = useState<string | null>(null);
@@ -16,10 +18,20 @@ export default function GeminiAdvisor() {
     setLoading(true);
     setResponse(null);
 
+    if (!user) {
+      setResponse('Authentication required: Please sign in to use the AI Biomechanical Advisor.');
+      setLoading(false);
+      return;
+    }
+
     try {
+      const token = await user.getIdToken();
       const res = await fetch('/api/gemini', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ prompt, context }),
       });
 

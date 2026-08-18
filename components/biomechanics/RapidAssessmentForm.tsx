@@ -22,6 +22,7 @@ import {
   deriveRubricGrade,
 } from '@/types/assessment';
 import { saveAssessmentToFirestore } from '@/lib/assessmentConverters';
+import { useAuth } from '@/lib/authContext';
 import {
   evaluateAssessment,
   isAIPipelineEnabled,
@@ -75,6 +76,7 @@ export default function RapidAssessmentForm({
   coachId = 'coach_marcus_vance',
   coachName = 'Coach Marcus Vance',
 }: RapidAssessmentFormProps) {
+  const { user } = useAuth();
   // Feature flag state
   const [aiPipelineActive, setAiPipelineActive] = useState<boolean>(() => isAIPipelineEnabled());
 
@@ -200,7 +202,13 @@ export default function RapidAssessmentForm({
     setErrorMessage(null);
 
     try {
+      if (!user) {
+        setErrorMessage('Authentication required: Please sign in to submit assessments.');
+        return;
+      }
+
       // 1. Process assessment through the evaluation service (deterministic or Gemini AI based on feature flag)
+      const authToken = await user.getIdToken();
       const evaluated = await evaluateAssessment({
         athlete_id: selectedAthlete.id,
         athlete_name: selectedAthlete.name,
@@ -228,7 +236,7 @@ export default function RapidAssessmentForm({
           video_storage_path: attachedFile?.storagePath,
           smart_grid_processed: Boolean(aiPipelineActive),
         },
-      });
+      }, undefined, authToken);
 
       // 2. Persist to Firestore assessments collection
       await saveAssessmentToFirestore(evaluated);

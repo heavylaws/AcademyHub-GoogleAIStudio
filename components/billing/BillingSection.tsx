@@ -122,9 +122,19 @@ export default function BillingSection() {
       setIsProcessingStripe(true);
       setStripeError(null);
 
+      if (!user) {
+        setStripeError('Authentication required: Please sign in to proceed with payment.');
+        setIsProcessingStripe(false);
+        return;
+      }
+
+      const token = await user.getIdToken();
       const res = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ invoiceId }),
       });
 
