@@ -1,11 +1,24 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getInvoiceByIdAdmin } from '@/services/billingAdminService';
-
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+import { verifyRequestAuth } from '@/lib/auth/verifyRequestAuth';
+import { requireRole } from '@/lib/auth/requireRole';
+import { AuthError } from '@/lib/auth/types';
 
 export async function POST(req: Request) {
   try {
+    const user = await verifyRequestAuth(req);
+    requireRole(user, ['parent', 'admin']);
+  } catch (err: any) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
+    return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
+  }
+
+  try {
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
     if (!stripeSecretKey) {
       return NextResponse.json(
         { error: 'STRIPE_SECRET_KEY is not configured on the server.' },

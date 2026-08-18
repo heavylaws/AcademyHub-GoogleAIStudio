@@ -31,7 +31,7 @@ export async function createInvoice(
   customId?: string
 ): Promise<FamilyInvoice> {
   try {
-    const invoiceId = customId || input.id || `INV-FAM-${Math.floor(1000 + Math.random() * 9000)}`;
+    const invoiceId = customId || input.id || `INV-FAM-${crypto.randomUUID()}`;
     const docRef = doc(db, INVOICES_COLLECTION, invoiceId);
 
     const invoiceData: FamilyInvoice = {

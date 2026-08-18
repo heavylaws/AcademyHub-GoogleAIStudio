@@ -5,10 +5,23 @@ import {
   deriveRubricGrade,
   CreateAssessmentInput,
 } from '@/types/assessment';
+import { verifyRequestAuth } from '@/lib/auth/verifyRequestAuth';
+import { requireRole } from '@/lib/auth/requireRole';
+import { AuthError } from '@/lib/auth/types';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+  try {
+    const user = await verifyRequestAuth(req);
+    requireRole(user, ['coach', 'admin']);
+  } catch (err: any) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
+    return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
+  }
+
   try {
     const input: CreateAssessmentInput & { id?: string } = await req.json();
 

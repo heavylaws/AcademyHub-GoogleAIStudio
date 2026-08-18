@@ -6,6 +6,19 @@ import {
   deriveRubricGrade,
   CreateAssessmentInput,
 } from '@/types/assessment';
+import { AuthError } from '@/lib/auth/types';
+
+// Mock auth middleware
+const mockVerifyRequestAuth = vi.fn();
+const mockRequireRole = vi.fn();
+
+vi.mock('@/lib/auth/verifyRequestAuth', () => ({
+  verifyRequestAuth: (req: any) => mockVerifyRequestAuth(req),
+}));
+
+vi.mock('@/lib/auth/requireRole', () => ({
+  requireRole: (user: any, allowedRoles: any) => mockRequireRole(user, allowedRoles),
+}));
 
 // Mock @google/genai with a class constructor
 const mockGenerateContent = vi.fn();
@@ -32,6 +45,9 @@ describe('POST /api/biomechanics/evaluate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...originalEnv };
+    // Default mock setup: authenticated as coach
+    mockVerifyRequestAuth.mockResolvedValue({ uid: 'coach_001', role: 'coach' });
+    mockRequireRole.mockReturnValue(undefined);
   });
 
   afterEach(() => {
@@ -83,12 +99,6 @@ describe('POST /api/biomechanics/evaluate', () => {
       expect(json.assessment.pipeline_status).toBe('deterministic_fallback');
       expect(json.assessment.agent_insights).toBeUndefined();
 
-      // Expected deterministic score with target_reps: 15:
-      // Form Quality: 95 * 0.4 = 38
-      // Endurance: 90 * 0.4 = 36
-      // Reps Execution: (15 / 15 * 100) * 0.2 = 20
-      // Fault penalty (1 fault * 3): -3
-      // Total = 38 + 36 + 20 - 3 = 91.0
       expect(json.assessment.computed_score).toBe(91);
       expect(json.assessment.rubric_grade).toBe('A');
     });
@@ -97,37 +107,24 @@ describe('POST /api/biomechanics/evaluate', () => {
   // Test (b): Scoring formula integrity
   describe('b. Scoring Formula Integrity', () => {
     it('verifies calculateComputedScore matches deterministic weighted formula for known inputs', () => {
-      // Set 1: Perfect reps with target_reps, high scores, no faults
       const score1 = calculateComputedScore(
         { valid_reps: 15, duration_seconds: 45, target_reps: 15 },
         { form_quality_score: 100, endurance_score: 100, fault_tags: [], coach_notes: '' }
       );
-      // (100 * 0.4) + (100 * 0.4) + (100 * 0.2) = 100
       expect(score1).toBe(100);
       expect(deriveRubricGrade(score1)).toBe('A');
 
-      // Set 2: Moderate scores with 2 fault penalties
       const score2 = calculateComputedScore(
         { valid_reps: 12, duration_seconds: 30, target_reps: 15 },
         { form_quality_score: 80, endurance_score: 75, fault_tags: ['trunk_lean', 'heel_lift'], coach_notes: '' }
       );
-      // Form: 80 * 0.4 = 32
-      // Endurance: 75 * 0.4 = 30
-      // Reps: (12 / 15 * 100) * 0.2 = 80 * 0.2 = 16
-      // Faults: 2 * 3 = -6
-      // Subtotal = 32 + 30 + 16 - 6 = 72
       expect(score2).toBe(72);
       expect(deriveRubricGrade(score2)).toBe('C');
 
-      // Set 3: Grade B boundary test (75 - 87)
       const score3 = calculateComputedScore(
         { valid_reps: 14, duration_seconds: 45, target_reps: 15 },
         { form_quality_score: 85, endurance_score: 80, fault_tags: [], coach_notes: '' }
       );
-      // Form: 85 * 0.4 = 34
-      // Endurance: 80 * 0.4 = 32
-      // Reps: (14 / 15 * 100) * 0.2 = 93.33 * 0.2 = 18.67
-      // Total = 34 + 32 + 18.67 = 84.7
       expect(score3).toBe(84.7);
       expect(deriveRubricGrade(score3)).toBe('B');
     });
@@ -212,6 +209,42 @@ describe('POST /api/biomechanics/evaluate', () => {
       expect(json.assessment.agent_insights).toBeDefined();
       expect(json.assessment.agent_insights.kinematicAnalysis).toContain('Valgus deflection');
       expect(json.assessment.agent_insights.confidenceScore).toBe(0.98);
+    });
+  });
+
+  // Test (d): Authentication & Role Enforcement
+  describe('d. Authentication & Role Enforcement', () => {
+    it('rejects unauthenticated requests with status 401', async () => {
+      mockVerifyRequestAuth.mockRejectedValueOnce(new AuthError('Missing Authorization header', 401));
+
+      const req = new NextRequest('http://localhost:3000/api/biomechanics/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(samplePayload),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(401);
+      const json = await res.json();
+      expect(json.error).toBe('Missing Authorization header');
+    });
+
+    it('rejects parent role requests with status 403', async () => {
+      mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_user_1', role: 'parent' });
+      mockRequireRole.mockImplementationOnce(() => {
+        throw new AuthError('Forbidden: Insufficient role permissions', 403);
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/biomechanics/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(samplePayload),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(403);
+      const json = await res.json();
+      expect(json.error).toBe('Forbidden: Insufficient role permissions');
     });
   });
 });
