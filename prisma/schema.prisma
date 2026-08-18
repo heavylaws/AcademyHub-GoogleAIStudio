@@ -1,0 +1,248 @@
+// AcademyHub Prisma Schema
+// Target DB: Cloud SQL for Postgres 15+ (me-central1)
+// System of record replacing Firestore document/array models with normalized tables.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum UserRole {
+  ADMIN  @map("admin")
+  COACH  @map("coach")
+  PARENT @map("parent")
+}
+
+enum DataSource {
+  MANUAL     @map("manual")
+  AI_AGENTIC @map("ai_agentic")
+}
+
+enum PipelineStatus {
+  DETERMINISTIC_FALLBACK @map("deterministic_fallback")
+  AI_EVALUATED           @map("ai_evaluated")
+  AI_ERROR               @map("ai_error")
+}
+
+enum PaymentSchedule {
+  UPFRONT  @map("upfront")
+  TWO_PART @map("2-part")
+  MONTHLY  @map("monthly")
+}
+
+enum PaymentStatus {
+  PENDING @map("pending")
+  PAID    @map("paid")
+  OVERDUE @map("overdue")
+}
+
+enum ChurnRisk {
+  LOW    @map("Low")
+  MEDIUM @map("Medium")
+  HIGH   @map("High")
+}
+
+// ==========================================
+// MODELS
+// ==========================================
+
+/// Users table: Primary account profiles linked to Firebase Auth UID
+model User {
+  /// id matches Firebase Auth UID (string PK, not auto-increment)
+  id          String   @id
+  email       String   @unique
+  displayName String?  @map("display_name")
+  role        UserRole @default(PARENT)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  athletes     Athlete[]     @relation("ParentAthletes")
+  assessments  Assessment[]  @relation("CoachAssessments")
+  invoices     Invoice[]     @relation("ParentInvoices")
+  schedules    Schedule[]    @relation("CoachSchedules")
+  coachProfile CoachProfile? @relation("UserCoachProfile")
+
+  @@map("users")
+}
+
+/// Athletes table: Youth profiles linked to parent user
+model Athlete {
+  id                  String   @id @default(cuid())
+  name                String
+  dob                 String?
+  parentUserId        String   @map("parent_user_id")
+  /// parentEmail is a denormalized display field only, never used for authorization
+  parentEmail         String   @map("parent_email")
+  emergencyContact    String?  @map("emergency_contact")
+  /// Neutral guardian consent naming for Gulf/Middle East region compliance (renamed from coppaConsent)
+  guardianConsent     Boolean  @default(false) @map("guardian_consent")
+  guardianConsentDate String?  @map("guardian_consent_date")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  parent          User           @relation("ParentAthletes", fields: [parentUserId], references: [id], onDelete: Cascade)
+  sports          AthleteSport[]
+  assessments     Assessment[]
+  invoiceChildren InvoiceChild[]
+
+  @@index([parentUserId])
+  @@map("athletes")
+}
+
+/// AthleteSports: Junction table replacing embedded sportsEnrolled array
+model AthleteSport {
+  id         String   @id @default(cuid())
+  athleteId  String   @map("athlete_id")
+  sport      String
+  monthlyFee Float    @map("monthly_fee")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  athlete Athlete @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([athleteId])
+  @@map("athlete_sports")
+}
+
+/// Assessments table: Biomechanical & skill evaluations
+model Assessment {
+  id                      String          @id @default(cuid())
+  athleteId               String          @map("athlete_id")
+  athleteName             String          @map("athlete_name")
+  /// parentEmail is a denormalized display field only
+  parentEmail             String?         @map("parent_email")
+  sport                   String
+  exerciseType            String          @map("exercise_type")
+  gradingRubricSop        String?         @map("grading_rubric_sop")
+  coachId                 String?         @map("coach_id")
+  coachName               String?         @map("coach_name")
+  dataSource              DataSource      @default(MANUAL) @map("data_source")
+  pipelineStatus          PipelineStatus? @map("pipeline_status")
+  errorDetail             String?         @map("error_detail")
+  quantitativeMetrics     Json            @map("quantitative_metrics")
+  qualitativeObservations Json            @map("qualitative_observations")
+  mediaReferences         Json            @map("media_references")
+  agentInsights           Json?           @map("agent_insights")
+  computedScore           Float           @map("computed_score")
+  rubricGrade             String?         @map("rubric_grade")
+  createdAt               DateTime        @default(now()) @map("created_at")
+  updatedAt               DateTime        @updatedAt @map("updated_at")
+
+  // Relationships
+  athlete Athlete @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  coach   User?   @relation("CoachAssessments", fields: [coachId], references: [id], onDelete: SetNull)
+
+  @@index([athleteId])
+  @@index([coachId])
+  @@map("assessments")
+}
+
+/// Invoices table: Consolidated family billing ledgers
+model Invoice {
+  id                    String          @id @default(cuid())
+  parentUserId          String          @map("parent_user_id")
+  parentName            String          @map("parent_name")
+  /// parentEmail is a denormalized display field only, authorization is anchored on parentUserId
+  parentEmail           String          @map("parent_email")
+  subtotal              Float
+  discountedChildName   String?         @map("discounted_child_name")
+  siblingDiscountAmount Float           @default(0) @map("sibling_discount_amount")
+  netTotal              Float           @map("net_total")
+  paymentSchedule       PaymentSchedule @map("payment_schedule")
+  paymentStatus         PaymentStatus   @default(PENDING) @map("payment_status")
+  issuedDate            String          @map("issued_date")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+
+  // Relationships
+  parent       User           @relation("ParentInvoices", fields: [parentUserId], references: [id], onDelete: Cascade)
+  children     InvoiceChild[]
+  // APPLICATION-LEVEL INVARIANT: Installment amounts must sum to netTotal (enforced in Phase 1/2 application code)
+  installments Installment[]
+
+  @@index([parentUserId])
+  @@map("invoices")
+}
+
+/// InvoiceChildren: Junction table linking an invoice to the athlete(s) it covers
+model InvoiceChild {
+  id         String   @id @default(cuid())
+  invoiceId  String   @map("invoice_id")
+  athleteId  String?  @map("athlete_id")
+  childName  String   @map("child_name")
+  sport      String
+  monthlyFee Float    @map("monthly_fee")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  athlete Athlete? @relation(fields: [athleteId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+  @@index([athleteId])
+  @@map("invoice_children")
+}
+
+/// Installments table: Individual payment schedule rows
+model Installment {
+  id        String   @id @default(cuid())
+  invoiceId String   @map("invoice_id")
+  label     String
+  amount    Float
+  dueDate   String   @map("due_date")
+  status    String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("installments")
+}
+
+/// Schedules table: Facility and court session reservations
+model Schedule {
+  id            String   @id @default(cuid())
+  title         String
+  sport         String
+  facility      String
+  coachId       String?  @map("coach_id")
+  coachName     String   @map("coach_name")
+  date          String
+  timeSlot      String   @map("time_slot")
+  maxCapacity   Int      @default(20) @map("max_capacity")
+  enrolledCount Int      @default(0) @map("enrolled_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  coach User? @relation("CoachSchedules", fields: [coachId], references: [id], onDelete: SetNull)
+
+  @@index([coachId])
+  @@map("schedules")
+}
+
+/// CoachProfile table: Coach performance, fill rate, and churn risk metrics
+model CoachProfile {
+  id             String    @id @default(cuid())
+  userId         String?   @unique @map("user_id")
+  name           String
+  sports         Json // Array of sport names
+  attendanceRate Float     @default(100.0) @map("attendance_rate")
+  churnRisk      ChurnRisk @default(LOW) @map("churn_risk")
+  retentionScore Float     @default(100.0) @map("retention_score")
+  batchFillRate  Float     @default(100.0) @map("batch_fill_rate")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user User? @relation("UserCoachProfile", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("coaches")
+}
