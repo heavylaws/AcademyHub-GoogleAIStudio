@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { verifyRequestAuth } from '@/lib/auth/verifyRequestAuth';
 import { requireRole } from '@/lib/auth/requireRole';
 import { AuthError } from '@/lib/auth/types';
+import { ensureUserRecord } from '@/lib/auth/ensureUserRecord';
+import { prisma } from '@/lib/prisma';
 import {
   createInvoiceAdmin,
   listInvoicesAdmin,
@@ -48,9 +50,20 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+    await ensureUserRecord(user);
+    const parentUserId = body.parentUserId || user.uid;
+    if (parentUserId !== user.uid) {
+      const targetParent = await prisma.user.findUnique({ where: { id: parentUserId } });
+      if (!targetParent) {
+        return NextResponse.json(
+          { error: 'Parent account must sign in before an invoice can be created for it.' },
+          { status: 400 }
+        );
+      }
+    }
     const invoice = await createInvoiceAdmin({
       ...body,
-      parentUserId: body.parentUserId || user.uid,
+      parentUserId,
     });
     return NextResponse.json({ invoice }, { status: 201 });
   } catch (err) {

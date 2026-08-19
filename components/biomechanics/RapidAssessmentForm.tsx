@@ -23,6 +23,7 @@ import {
 } from '@/types/assessment';
 import { saveAssessmentToFirestore } from '@/lib/assessmentConverters';
 import { useAuth } from '@/lib/authContext';
+import { useAthletesSubscription } from '@/hooks/useAthletesSubscription';
 import {
   evaluateAssessment,
   isAIPipelineEnabled,
@@ -41,14 +42,6 @@ export interface RapidAthlete {
   parentEmail: string;
   avatarUrl?: string;
 }
-
-export const DEFAULT_ATHLETES: RapidAthlete[] = [
-  { id: 'ath_8042', name: 'Marcus Vance', sport: 'Football', parentEmail: 'robert.vance@gmail.com' },
-  { id: 'ath_8043', name: 'Sarah Vance', sport: 'Basketball', parentEmail: 'robert.vance@gmail.com' },
-  { id: 'ath_8044', name: 'Alex Johnson', sport: 'Basketball', parentEmail: 'parent.johnson@gmail.com' },
-  { id: 'ath_8045', name: 'Priya Sharma', sport: 'Swimming', parentEmail: 'sharma.family@gmail.com' },
-  { id: 'ath_8046', name: 'Liam Chen', sport: 'Cricket', parentEmail: 'chen.family@gmail.com' },
-];
 
 export const SPORTS_OPTIONS = ['Football', 'Basketball', 'Cricket', 'Swimming'] as const;
 export type SportType = typeof SPORTS_OPTIONS[number];
@@ -77,6 +70,7 @@ export default function RapidAssessmentForm({
   coachName = 'Coach Marcus Vance',
 }: RapidAssessmentFormProps) {
   const { user } = useAuth();
+  const { athletes, loading: athletesLoading, error: athletesError } = useAthletesSubscription();
   // Feature flag state
   const [aiPipelineActive, setAiPipelineActive] = useState<boolean>(() => isAIPipelineEnabled());
 
@@ -143,9 +137,18 @@ export default function RapidAssessmentForm({
     setDurationSeconds(secs);
   };
 
+  const effectiveSelectedAthleteId = selectedAthleteId || athletes[0]?.id || '';
+
   // Selected athlete lookup
-  const selectedAthlete =
-    DEFAULT_ATHLETES.find((a) => a.id === selectedAthleteId) || DEFAULT_ATHLETES[0];
+  const selectedAthleteRecord = athletes.find((athlete) => athlete.id === effectiveSelectedAthleteId) || athletes[0];
+  const selectedAthlete: RapidAthlete | null = selectedAthleteRecord
+    ? {
+        id: selectedAthleteRecord.id,
+        name: selectedAthleteRecord.name,
+        sport: selectedAthleteRecord.sportsEnrolled[0] || '',
+        parentEmail: selectedAthleteRecord.parentEmail,
+      }
+    : null;
 
   // Fault tag toggling
   const toggleFault = (tag: string) => {
@@ -202,17 +205,20 @@ export default function RapidAssessmentForm({
     setErrorMessage(null);
 
     try {
-      if (!user) {
-        setErrorMessage('Authentication required: Please sign in to submit assessments.');
+      if (!user || !selectedAthlete) {
+        setErrorMessage(!user
+          ? 'Authentication required: Please sign in to submit assessments.'
+          : 'No athlete is available. Create an athlete before submitting an assessment.');
         return;
       }
+      const athlete = selectedAthlete;
 
       // 1. Process assessment through the evaluation service (deterministic or Gemini AI based on feature flag)
       const authToken = await user.getIdToken();
       const evaluated = await evaluateAssessment({
-        athlete_id: selectedAthlete.id,
-        athlete_name: selectedAthlete.name,
-        parent_email: selectedAthlete.parentEmail,
+        athlete_id: athlete.id,
+        athlete_name: athlete.name,
+        parent_email: athlete.parentEmail,
         sport: selectedSport,
         exercise_type: selectedExercise,
         grading_rubric_sop: `${selectedSport} - ${selectedExercise} SOP`,
@@ -247,6 +253,10 @@ export default function RapidAssessmentForm({
         onAssessmentSaved(evaluated);
       }
     } catch (err: any) {
+      if (!selectedAthlete) {
+        setErrorMessage('No athlete is available. Create an athlete before submitting an assessment.');
+        return;
+      }
       console.warn('Firestore write fallback in demo mode:', err);
       // Fallback
       const fallbackDoc: EvaluatedAssessment = {
@@ -389,16 +399,21 @@ export default function RapidAssessmentForm({
             </label>
             <select
               id="rapid-athlete-select"
-              value={selectedAthleteId}
+              value={effectiveSelectedAthleteId}
               onChange={(e) => setSelectedAthleteId(e.target.value)}
               className="w-full h-11 bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 font-semibold focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
             >
-              {DEFAULT_ATHLETES.map((athlete) => (
+              {athletes.map((athlete) => (
                 <option key={athlete.id} value={athlete.id}>
-                  {athlete.name} ({athlete.sport})
+                  {athlete.name} ({athlete.sportsEnrolled.join(', ') || 'No sport'})
                 </option>
               ))}
             </select>
+            {athletesLoading && <p className="mt-1 text-[10px] text-slate-400">Loading athletes...</p>}
+            {athletesError && <p className="mt-1 text-[10px] text-rose-300">Unable to load athletes: {athletesError}</p>}
+            {!athletesLoading && !athletesError && athletes.length === 0 && (
+              <p className="mt-1 text-[10px] text-amber-300">No athletes yet.</p>
+            )}
           </div>
 
           {/* Sport Selector */}

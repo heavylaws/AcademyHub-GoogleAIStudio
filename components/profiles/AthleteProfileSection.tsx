@@ -16,84 +16,28 @@ import {
   TrendingUp,
   Sparkles,
   RefreshCw,
-  Database,
   ShieldAlert,
 } from 'lucide-react';
 import { useAssessmentsSubscription } from '@/hooks/useAssessmentsSubscription';
+import { AthleteRecord, useAthletesSubscription } from '@/hooks/useAthletesSubscription';
+import { useAuth } from '@/lib/authContext';
 import PerformanceTimelineChart from '@/components/biomechanics/PerformanceTimelineChart';
 import DevelopmentalRadarChart from '@/components/biomechanics/DevelopmentalRadarChart';
 
-interface StudentAthleteMeta {
-  id: string;
-  name: string;
-  age: number;
-  dob: string;
-  parentEmail: string;
-  parentName: string;
-  emergencyContact: string;
-  coppaConsent: boolean;
-  sportsEnrolled: string[];
-}
-
-const ATHLETES_REGISTRY: StudentAthleteMeta[] = [
-  {
-    id: 'ath_8042',
-    name: 'Marcus Vance',
-    age: 14,
-    dob: '2012-03-12',
-    parentEmail: 'robert.vance@gmail.com',
-    parentName: 'Robert Vance',
-    emergencyContact: '+1 (555) 234-5678',
-    coppaConsent: true,
-    sportsEnrolled: ['Football (Soccer)', 'Track & Field'],
-  },
-  {
-    id: 'ath_8043',
-    name: 'Sarah Vance',
-    age: 12,
-    dob: '2014-07-22',
-    parentEmail: 'robert.vance@gmail.com',
-    parentName: 'Robert Vance',
-    emergencyContact: '+1 (555) 234-5678',
-    coppaConsent: true,
-    sportsEnrolled: ['Badminton', 'Basketball'],
-  },
-  {
-    id: 'ath_8044',
-    name: 'Alex Johnson',
-    age: 15,
-    dob: '2011-11-04',
-    parentEmail: 'parent.johnson@gmail.com',
-    parentName: 'Elena Johnson',
-    emergencyContact: '+1 (555) 890-1234',
-    coppaConsent: true,
-    sportsEnrolled: ['Basketball', 'Track & Field'],
-  },
-  {
-    id: 'ath_8045',
-    name: 'Priya Sharma',
-    age: 13,
-    dob: '2013-05-18',
-    parentEmail: 'sharma.family@gmail.com',
-    parentName: 'Deepak Sharma',
-    emergencyContact: '+1 (555) 432-8765',
-    coppaConsent: true,
-    sportsEnrolled: ['Swimming', 'Badminton'],
-  },
-];
+type StudentAthleteMeta = AthleteRecord;
 
 export default function AthleteProfileSection() {
-  const [athletesList, setAthletesList] = useState<StudentAthleteMeta[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('academyhub_athletes');
-      if (saved) {
-        try { return JSON.parse(saved); } catch {}
-      }
-    }
-    return ATHLETES_REGISTRY;
-  });
+  const { user } = useAuth();
+  const {
+    athletes: athletesList,
+    loading: athletesLoading,
+    error: athletesError,
+    isPermissionDenied: athletesPermissionDenied,
+    isLive: athletesLive,
+    refresh: refreshAthletes,
+  } = useAthletesSubscription();
 
-  const [selectedAthleteId, setSelectedAthleteId] = useState<string>('ath_8042');
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string>('');
   const [selectedSportTab, setSelectedSportTab] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'matrix' | 'analytics'>('matrix');
 
@@ -103,60 +47,66 @@ export default function AthleteProfileSection() {
   const [newAge, setNewAge] = useState(13);
   const [newParentName, setNewParentName] = useState('');
   const [newParentEmail, setNewParentEmail] = useState('');
+  const [newParentUserId, setNewParentUserId] = useState('');
   const [newEmergency, setNewEmergency] = useState('+1 (555) 999-0000');
   const [newSports, setNewSports] = useState('Basketball, Track & Field');
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
+
+  const effectiveSelectedAthleteId = selectedAthleteId || athletesList[0]?.id || '';
 
   const activeAthlete =
-    athletesList.find((a) => a.id === selectedAthleteId) || athletesList[0] || ATHLETES_REGISTRY[0];
+    athletesList.find((a) => a.id === effectiveSelectedAthleteId) || athletesList[0];
 
-  const handleRegisterAthlete = (e: React.FormEvent) => {
+  const handleRegisterAthlete = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim() || !newParentEmail.trim()) return;
-
-    const newId = `ath_${Date.now().toString().slice(-4)}`;
-    const sportsArr = newSports.split(',').map(s => s.trim()).filter(Boolean);
-
-    const newAthlete: StudentAthleteMeta = {
-      id: newId,
-      name: newName,
-      age: Number(newAge),
-      dob: `${2026 - Number(newAge)}-01-15`,
-      parentName: newParentName || 'Parent Guardian',
-      parentEmail: newParentEmail,
-      emergencyContact: newEmergency,
-      coppaConsent: true,
-      sportsEnrolled: sportsArr.length > 0 ? sportsArr : ['Basketball'],
-    };
-
-    const updated = [newAthlete, ...athletesList];
-    setAthletesList(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('academyhub_athletes', JSON.stringify(updated));
+    setRegistrationError(null);
+    if (!newName.trim() || !newParentEmail.trim() || !newParentUserId.trim() || !user) {
+      setRegistrationError('Athlete name, parent email, parent Firebase UID, and an authenticated session are required.');
+      return;
     }
 
-    setSelectedAthleteId(newId);
-    setIsRegisterModalOpen(false);
-    setNewName('');
-    setNewParentEmail('');
+    const sportsArr = newSports.split(',').map(s => s.trim()).filter(Boolean);
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/athletes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newName,
+          dob: `${new Date().getFullYear() - Number(newAge)}-01-15`,
+          parentUserId: newParentUserId,
+          parentEmail: newParentEmail,
+          emergencyContact: newEmergency,
+          guardianConsent: true,
+          sports: (sportsArr.length > 0 ? sportsArr : ['Basketball']).map((sport) => ({ sport })),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to register athlete.');
+
+      setSelectedAthleteId(data.athlete.id);
+      setIsRegisterModalOpen(false);
+      refreshAthletes();
+      setNewName('');
+      setNewParentEmail('');
+      setNewParentUserId('');
+    } catch (err) {
+      setRegistrationError(err instanceof Error ? err.message : 'Failed to register athlete.');
+    }
   };
 
-  // Real-time Firestore onSnapshot subscription for the active athlete
-  const {
-    assessments,
-    loading,
-    error,
-    isPermissionDenied,
-    lastUpdated,
-    isLive,
-    seedSampleData,
-    refresh,
-  } = useAssessmentsSubscription({
-    athleteId: selectedAthleteId,
+  // Assessment history remains on its existing backend; athlete records are API-polled above.
+  const { assessments } = useAssessmentsSubscription({
+    athleteId: effectiveSelectedAthleteId,
     sport: selectedSportTab,
   });
 
-  // Calculate live sport-level aggregations from Firestore assessments
+  // Calculate live sport-level aggregations from assessment records.
   const sportSummaries = useMemo(() => {
+    if (!activeAthlete) return [];
     const sports = activeAthlete.sportsEnrolled;
     return sports.map((sportName) => {
       const sportAssessments = assessments.filter((a) => a.sport === sportName);
@@ -185,6 +135,23 @@ export default function AthleteProfileSection() {
     });
   }, [activeAthlete, assessments]);
 
+  if (!activeAthlete) {
+    return (
+      <div className="space-y-4">
+        {athletesError && (
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-sm">
+            Unable to load athletes: {athletesError}
+          </div>
+        )}
+        {!athletesLoading && !athletesError && (
+          <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 text-sm">
+            No athletes yet.
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 transition-colors duration-200">
       {/* Header Banner */}
@@ -196,7 +163,7 @@ export default function AthleteProfileSection() {
               Unified Student Profile & Live Assessment Matrix
             </h2>
             <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> onSnapshot Subscribed
+              <CheckCircle2 className="w-3 h-3" /> {athletesLive ? 'Athlete API Polling' : 'Athlete API Offline'}
             </span>
           </div>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
@@ -214,7 +181,7 @@ export default function AthleteProfileSection() {
           </button>
           <select
             id="athlete-profile-select"
-            value={selectedAthleteId}
+            value={effectiveSelectedAthleteId}
             onChange={(e) => {
               setSelectedAthleteId(e.target.value);
               setSelectedSportTab('all');
@@ -229,6 +196,12 @@ export default function AthleteProfileSection() {
           </select>
         </div>
       </div>
+
+      {athletesError && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-sm">
+          Unable to refresh athletes: {athletesError}
+        </div>
+      )}
 
       {/* Register New Athlete Modal */}
       {isRegisterModalOpen && (
@@ -300,6 +273,17 @@ export default function AthleteProfileSection() {
                 />
               </div>
               <div>
+                <label className="block text-slate-300 font-semibold mb-1">Parent Firebase UID</label>
+                <input
+                  type="text"
+                  required
+                  value={newParentUserId}
+                  onChange={(e) => setNewParentUserId(e.target.value)}
+                  placeholder="Parent must have signed in once"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+              <div>
                 <label className="block text-slate-300 font-semibold mb-1">Enrolled Sports (comma separated)</label>
                 <input
                   type="text"
@@ -323,6 +307,11 @@ export default function AthleteProfileSection() {
                 >
                   Save Athlete
                 </button>
+                {registrationError && (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300">
+                    {registrationError}
+                  </div>
+                )}
               </div>
             </form>
           </div>
@@ -330,7 +319,7 @@ export default function AthleteProfileSection() {
       )}
 
       {/* Permission Denied Guard Notice if triggered */}
-      {isPermissionDenied && (
+      {athletesPermissionDenied && (
         <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs space-y-1">
           <div className="flex items-center gap-2 font-bold">
             <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
