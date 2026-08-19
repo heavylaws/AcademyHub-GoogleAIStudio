@@ -3,8 +3,6 @@
  * Supports Manual-First, AI-Ready Biomechanical & Skill Evaluation Workflows
  */
 
-import type { Timestamp } from 'firebase/firestore';
-
 export type DataSource = 'manual' | 'ai_agentic';
 
 export type PipelineStatus = 'ai_evaluated' | 'deterministic_fallback' | 'ai_error';
@@ -63,8 +61,8 @@ export interface Assessment {
   media_references: MediaReferences;
   computed_score: number; // Dynamic weighted calculation (0 - 100)
   rubric_grade?: RubricGrade;
-  created_at: string | Timestamp;
-  updated_at?: string | Timestamp;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface CreateAssessmentInput {

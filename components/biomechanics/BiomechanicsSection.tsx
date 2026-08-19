@@ -6,7 +6,8 @@ import {
   calculateComputedScore,
   deriveRubricGrade,
 } from '@/types/assessment';
-import { saveAssessmentToFirestore } from '@/lib/assessmentConverters';
+import { useAuth } from '@/lib/authContext';
+import { useAthletesSubscription } from '@/hooks/useAthletesSubscription';
 import RapidAssessmentForm from './RapidAssessmentForm';
 import LiveAssessmentDashboard from './LiveAssessmentDashboard';
 import ExerciseVideoModal from './ExerciseVideoModal';
@@ -23,13 +24,6 @@ import StudioScoringEngine, {
 
 export interface AthleteOptionType extends AthleteOption {}
 export interface SportConfigType extends SportConfig {}
-
-const sampleAthletes: AthleteOption[] = [
-  { id: 'ath_8042', name: 'Marcus Vance', parentEmail: 'robert.vance@gmail.com' },
-  { id: 'ath_8043', name: 'Sarah Vance', parentEmail: 'robert.vance@gmail.com' },
-  { id: 'ath_8044', name: 'Alex Johnson', parentEmail: 'parent.johnson@gmail.com' },
-  { id: 'ath_8045', name: 'Priya Sharma', parentEmail: 'sharma.family@gmail.com' },
-];
 
 const sportsConfig: Record<string, SportConfig> = {
   'Football (Soccer)': {
@@ -90,13 +84,20 @@ const sportsConfig: Record<string, SportConfig> = {
 };
 
 export default function BiomechanicsSection() {
+  const { user } = useAuth();
+  const { athletes } = useAthletesSubscription();
+  const sampleAthletes: AthleteOption[] = athletes.map((athlete) => ({
+    id: athlete.id,
+    name: athlete.name,
+    parentEmail: athlete.parentEmail,
+  }));
   const [activeView, setActiveView] = useState<BiomechanicsViewMode>('rapid');
   const [selectedSport, setSelectedSport] = useState<string>('Football (Soccer)');
   const currentSportConfig = sportsConfig[selectedSport] || sportsConfig['Football (Soccer)'];
 
   const [selectedExercise, setSelectedExercise] = useState<string>(currentSportConfig.exercises[0]);
   const [selectedSOP, setSelectedSOP] = useState<string>(currentSportConfig.sops[0]);
-  const [selectedAthlete, setSelectedAthlete] = useState<string>('ath_8042');
+  const [selectedAthlete, setSelectedAthlete] = useState<string>('');
 
   // Workflow Pipeline: 'manual' (default) vs 'ai_agentic'
   const [dataSource, setDataSource] = useState<DataSource>('manual');
@@ -126,11 +127,7 @@ export default function BiomechanicsSection() {
   const [lastSavedId, setLastSavedId] = useState<string>('');
 
   // Assessment history state
-  const [assessmentHistory, setAssessmentHistory] = useState<AssessmentHistoryItem[]>([
-    { id: 'asm_01', athlete: 'Marcus Vance', sport: 'Football (Soccer)', exercise: 'Squat Depth & Valgus SOP', source: 'manual', score: 92.4, grade: 'A', date: 'Today, 09:30 AM' },
-    { id: 'asm_02', athlete: 'Sarah Vance', sport: 'Badminton', exercise: 'Lunge Deceleration SOP', source: 'ai_agentic', score: 95.8, grade: 'A', date: 'Yesterday, 04:15 PM' },
-    { id: 'asm_03', athlete: 'Alex Johnson', sport: 'Basketball', exercise: 'Triple Extension Jump SOP', source: 'manual', score: 87.2, grade: 'B', date: 'Aug 11, 2026' },
-  ]);
+  const [assessmentHistory, setAssessmentHistory] = useState<AssessmentHistoryItem[]>([]);
 
   const handleSportChange = (sport: string) => {
     setSelectedSport(sport);
@@ -179,7 +176,12 @@ export default function BiomechanicsSection() {
     const athleteObj = sampleAthletes.find((a) => a.id === selectedAthlete) || sampleAthletes[0];
 
     try {
-      const savedDoc = await saveAssessmentToFirestore({
+      if (!user || !athleteObj) throw new Error('An authenticated user and athlete are required.');
+      const token = await user.getIdToken();
+      const response = await fetch('/api/assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
         athlete_id: athleteObj.id,
         athlete_name: athleteObj.name,
         parent_email: athleteObj.parentEmail,
@@ -204,7 +206,11 @@ export default function BiomechanicsSection() {
           video_storage_path: videoStoragePath || undefined,
           smart_grid_processed: smartGridProcessed,
         },
+        }),
       });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to persist assessment.');
+      const savedDoc = data.assessment;
 
       setLastSavedId(savedDoc.id);
       setIngestSuccess(true);
@@ -222,24 +228,8 @@ export default function BiomechanicsSection() {
         },
         ...prev,
       ]);
-    } catch {
-      // Local fallback in case firestore credentials are in offline preview mode
-      const fallbackId = `asm_${Date.now()}`;
-      setLastSavedId(fallbackId);
-      setIngestSuccess(true);
-      setAssessmentHistory((prev) => [
-        {
-          id: fallbackId,
-          athlete: athleteObj.name,
-          sport: selectedSport,
-          exercise: selectedSOP,
-          source: dataSource,
-          score: computedScore,
-          grade: activeGradeLetter,
-          date: 'Just now',
-        },
-        ...prev,
-      ]);
+    } catch (error) {
+      console.error('Assessment persistence failed:', error);
     } finally {
       setIsIngesting(false);
     }
@@ -333,7 +323,7 @@ export default function BiomechanicsSection() {
               />
             </div>
 
-            {/* Right Column: Computed Score Card & Firestore Ingestion */}
+            {/* Right Column: Computed Score Card & Postgres Ingestion */}
             <StudioScoringEngine
               computedScore={computedScore}
               activeGradeLetter={activeGradeLetter}

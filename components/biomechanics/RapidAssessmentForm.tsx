@@ -21,7 +21,6 @@ import {
   calculateComputedScore,
   deriveRubricGrade,
 } from '@/types/assessment';
-import { saveAssessmentToFirestore } from '@/lib/assessmentConverters';
 import { useAuth } from '@/lib/authContext';
 import { useAthletesSubscription } from '@/hooks/useAthletesSubscription';
 import {
@@ -65,7 +64,7 @@ export interface RapidAssessmentFormProps {
 export default function RapidAssessmentForm({
   onAssessmentSaved,
   defaultSport = 'Football',
-  defaultAthleteId = 'ath_8042',
+  defaultAthleteId = '',
   coachId = 'coach_marcus_vance',
   coachName = 'Coach Marcus Vance',
 }: RapidAssessmentFormProps) {
@@ -198,7 +197,7 @@ export default function RapidAssessmentForm({
     setAttachedFile(null);
   };
 
-  // Form Submission Action -> Evaluated through evaluationService -> Saved to Firestore
+  // Form Submission Action -> evaluate route -> authenticated Postgres persistence route
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -244,55 +243,28 @@ export default function RapidAssessmentForm({
         },
       }, undefined, authToken);
 
-      // 2. Persist to Firestore assessments collection
-      await saveAssessmentToFirestore(evaluated);
+      // 2. Persist the evaluated result through the authenticated Postgres API.
+      const persistResponse = await fetch('/api/assessments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(evaluated),
+      });
+      const persistData = await persistResponse.json();
+      if (!persistResponse.ok) {
+        throw new Error(persistData.error || 'Failed to persist assessment.');
+      }
+      const savedAssessment = persistData.assessment as EvaluatedAssessment;
 
-      setLastSavedAssessment(evaluated);
+      setLastSavedAssessment(savedAssessment);
       setSubmitSuccess(true);
       if (onAssessmentSaved) {
-        onAssessmentSaved(evaluated);
+        onAssessmentSaved(savedAssessment);
       }
-    } catch (err: any) {
-      if (!selectedAthlete) {
-        setErrorMessage('No athlete is available. Create an athlete before submitting an assessment.');
-        return;
-      }
-      console.warn('Firestore write fallback in demo mode:', err);
-      // Fallback
-      const fallbackDoc: EvaluatedAssessment = {
-        id: `asm_${Date.now()}`,
-        athlete_id: selectedAthlete.id,
-        athlete_name: selectedAthlete.name,
-        parent_email: selectedAthlete.parentEmail,
-        sport: selectedSport,
-        exercise_type: selectedExercise,
-        grading_rubric_sop: `${selectedSport} - ${selectedExercise} SOP`,
-        coach_id: coachId,
-        coach_name: coachName,
-        data_source: aiPipelineActive ? 'ai_agentic' : 'manual',
-        quantitative_metrics: {
-          valid_reps: validReps,
-          duration_seconds: durationSeconds,
-        },
-        qualitative_observations: {
-          form_quality_score: formQualityScore,
-          endurance_score: enduranceScore,
-          fault_tags: selectedFaults,
-          coach_notes: coachNotes,
-        },
-        media_references: {
-          video_storage_path: attachedFile?.storagePath,
-          smart_grid_processed: aiPipelineActive,
-        },
-        computed_score: computedScore,
-        rubric_grade: rubricGrade,
-        created_at: new Date().toISOString(),
-      };
-      setLastSavedAssessment(fallbackDoc);
-      setSubmitSuccess(true);
-      if (onAssessmentSaved) {
-        onAssessmentSaved(fallbackDoc);
-      }
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to persist assessment.');
     } finally {
       setIsSubmitting(false);
     }
@@ -483,7 +455,7 @@ export default function RapidAssessmentForm({
               Assessment Successfully Saved!
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Logged to Firestore <code className="font-mono text-cyan-600 dark:text-cyan-400">assessments</code> for{' '}
+              Logged to Postgres <code className="font-mono text-cyan-600 dark:text-cyan-400">assessments</code> for{' '}
               <strong className="text-slate-800 dark:text-slate-200">{lastSavedAssessment.athlete_name}</strong> in {lastSavedAssessment.sport}.
             </p>
           </div>

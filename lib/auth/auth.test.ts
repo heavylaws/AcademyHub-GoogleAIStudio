@@ -15,6 +15,7 @@ vi.mock('firebase-admin/auth', () => ({
 // Mock Prisma Client singleton
 const mockAthleteFindUnique = vi.fn();
 const mockInvoiceFindUnique = vi.fn();
+const mockAssessmentFindUnique = vi.fn();
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     athlete: {
@@ -22,6 +23,9 @@ vi.mock('@/lib/prisma', () => ({
     },
     invoice: {
       findUnique: (...args: any[]) => mockInvoiceFindUnique(...args),
+    },
+    assessment: {
+      findUnique: (...args: any[]) => mockAssessmentFindUnique(...args),
     },
   },
 }));
@@ -169,15 +173,54 @@ describe('Phase 1 Authorization Middleware (lib/auth)', () => {
       );
     });
 
+    it('allows parent user who owns an assessment through its athlete', async () => {
+      mockAssessmentFindUnique.mockResolvedValueOnce({ athlete: { parentUserId: 'parent_uid_100' } });
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+
+      await expect(requireOwnership(parentUser, 'assessment', 'asm_8042')).resolves.not.toThrow();
+      expect(mockAssessmentFindUnique).toHaveBeenCalledWith({
+        where: { id: 'asm_8042' },
+        select: { athlete: { select: { parentUserId: true } } },
+      });
+    });
+
+    it('rejects a parent who does not own an assessment through its athlete', async () => {
+      mockAssessmentFindUnique.mockResolvedValueOnce({ athlete: { parentUserId: 'other_parent_uid' } });
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+
+      await expect(requireOwnership(parentUser, 'assessment', 'asm_8042')).rejects.toThrow(
+        'Forbidden: You do not own this resource'
+      );
+    });
+
     it('allows coach and admin roles to bypass ownership checks', async () => {
       const coachUser: AuthUser = { uid: 'coach_uid_1', role: 'coach', claims: { role: 'coach' } };
       const adminUser: AuthUser = { uid: 'admin_uid_1', role: 'admin', claims: { role: 'admin' } };
 
       await expect(requireOwnership(coachUser, 'athlete', 'ath_8042')).resolves.not.toThrow();
       await expect(requireOwnership(adminUser, 'invoice', 'INV-8042')).resolves.not.toThrow();
+      await expect(requireOwnership(coachUser, 'assessment', 'asm_8042')).resolves.not.toThrow();
 
       expect(mockAthleteFindUnique).not.toHaveBeenCalled();
       expect(mockInvoiceFindUnique).not.toHaveBeenCalled();
+    });
+
+    it('rejects when an assessment is not found', async () => {
+      mockAssessmentFindUnique.mockResolvedValueOnce(null);
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+
+      await expect(requireOwnership(parentUser, 'assessment', 'asm_nonexistent')).rejects.toThrow(
+        'Forbidden: You do not own this resource'
+      );
+    });
+
+    it('fails closed when the assessment ownership join errors', async () => {
+      mockAssessmentFindUnique.mockRejectedValueOnce(new Error('Postgres connection pool error'));
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+
+      await expect(requireOwnership(parentUser, 'assessment', 'asm_8042')).rejects.toThrow(
+        'Forbidden: Resource ownership check failed'
+      );
     });
 
     it('rejects when target resource is not found in database', async () => {

@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { AuthUser, ResourceType, AuthError } from './types';
 
 /**
- * Checks resource ownership for the given resource type ('athlete' | 'invoice') and resourceId.
+ * Checks resource ownership for the given resource type and resourceId.
  * 
  * Rules:
  * 1. Admin and Coach roles bypass ownership checks and are granted access.
@@ -18,7 +18,7 @@ export async function requireOwnership(
     throw new AuthError('Unauthorized', 401);
   }
 
-  // Admin and Coach roles are granted access to all athletes and invoices
+  // Admin and Coach roles are granted access to all supported resources.
   if (user.role === 'admin' || user.role === 'coach') {
     return;
   }
@@ -42,6 +42,12 @@ export async function requireOwnership(
         select: { parentUserId: true },
       });
       parentUserId = invoice?.parentUserId;
+    } else if (resourceType === 'assessment') {
+      const assessment = await prisma.assessment.findUnique({
+        where: { id: resourceId },
+        select: { athlete: { select: { parentUserId: true } } },
+      });
+      parentUserId = assessment?.athlete?.parentUserId;
     } else {
       throw new AuthError('Forbidden: Unsupported resource type', 403);
     }
