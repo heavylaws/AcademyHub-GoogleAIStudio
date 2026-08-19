@@ -11,7 +11,6 @@ import {
   Sparkles,
   Percent,
   FileText,
-  Database,
   ShieldAlert,
   RefreshCw,
   Loader2,
@@ -36,17 +35,16 @@ export default function BillingSection() {
   const {
     invoices: familyInvoices,
     loading: invoicesLoading,
+    error: invoicesError,
     isPermissionDenied,
     isLive,
     totalCount,
-    seedSampleData,
     refresh,
   } = useInvoicesSubscription({ parentEmail, role });
 
   const [paymentSchedule, setPaymentSchedule] = useState<PaymentSchedule>('monthly');
   const [selectedInvoiceModal, setSelectedInvoiceModal] = useState<FamilyInvoice | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [isSeeding, setIsSeeding] = useState<boolean>(false);
   const [isProcessingStripe, setIsProcessingStripe] = useState<boolean>(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
@@ -84,6 +82,11 @@ export default function BillingSection() {
       const targetParentName = user?.displayName || 'Robert Vance';
       const targetParentEmail = user?.email || 'robert.vance@gmail.com';
 
+      if (!user) {
+        throw new Error('Authentication required: Please sign in to issue invoices.');
+      }
+
+      const token = await user.getIdToken();
       await createInvoice({
         parentName: targetParentName,
         parentEmail: targetParentEmail,
@@ -96,12 +99,12 @@ export default function BillingSection() {
         installmentBreakdown: inst,
         payment_status: 'pending',
         issuedDate: new Date().toISOString().split('T')[0],
-      });
+      }, undefined, token);
 
-      setActionSuccessMessage('Consolidated invoice persisted to Firestore.');
+      setActionSuccessMessage('Consolidated invoice persisted to Postgres.');
       setTimeout(() => setActionSuccessMessage(null), 3500);
     } catch (err) {
-      console.error('Failed to issue invoice to Firestore:', err);
+      console.error('Failed to issue invoice:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -109,11 +112,16 @@ export default function BillingSection() {
 
   const handleUpdatePaymentStatus = async (invoiceId: string, newStatus: PaymentStatus) => {
     try {
-      await updateInvoice(invoiceId, { payment_status: newStatus });
+      if (!user) {
+        throw new Error('Authentication required: Please sign in to update invoices.');
+      }
+      const token = await user.getIdToken();
+      await updateInvoice(invoiceId, { payment_status: newStatus }, token);
       setActionSuccessMessage(`Invoice ${invoiceId} updated to ${newStatus.toUpperCase()}`);
       setTimeout(() => setActionSuccessMessage(null), 3000);
     } catch (err) {
       console.error('Failed to update invoice status:', err);
+      setActionSuccessMessage(err instanceof Error ? err.message : 'Failed to update invoice.');
     }
   };
 
@@ -157,20 +165,9 @@ export default function BillingSection() {
     }
   };
 
-  const handleSeed = async () => {
-    try {
-      setIsSeeding(true);
-      await seedSampleData();
-      setActionSuccessMessage('Sample invoices seeded into Firestore.');
-      setTimeout(() => setActionSuccessMessage(null), 3500);
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
   return (
     <div className="space-y-6 transition-colors duration-200">
-      {/* Header Banner with Live onSnapshot Status Indicator */}
+      {/* Header Banner with polling status indicator */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -189,7 +186,7 @@ export default function BillingSection() {
               Consolidated Family Billing Engine & Sibling Discount Ledger
             </h2>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 font-bold flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> onSnapshot Active
+              <CheckCircle2 className="w-3 h-3" /> API Polling Active
             </span>
           </div>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
@@ -209,16 +206,6 @@ export default function BillingSection() {
             <RefreshCw className={`w-3.5 h-3.5 ${invoicesLoading ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Sync</span>
           </button>
-          {isAdmin && (
-            <button
-              onClick={handleSeed}
-              disabled={isSeeding}
-              className="px-3 py-2 min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-semibold border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5"
-            >
-              <Database className="w-3.5 h-3.5 text-cyan-500" />
-              <span>{isSeeding ? 'Seeding...' : 'Seed Sample Invoices'}</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -230,8 +217,20 @@ export default function BillingSection() {
             <span>Role-Based Access Control / Billing Security Guard Active</span>
           </div>
           <p className="text-[11px] text-amber-800 dark:text-amber-400">
-            Firestore security rules scope billing documents: Admins have full access, while Parents are restricted to viewing their own registered family invoices ({user?.email || 'unauthenticated'}). Operating in safe local mirror mode.
+            Invoice access is enforced by the authenticated Postgres API. Parents see only invoices owned by their account ({user?.email || 'unauthenticated'}).
           </p>
+        </div>
+      )}
+
+      {invoicesError && !isPermissionDenied && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-300 text-xs">
+          Unable to load invoices: {invoicesError}
+        </div>
+      )}
+
+      {!invoicesLoading && !invoicesError && familyInvoices.length === 0 && (
+        <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 text-sm">
+          No invoices yet.
         </div>
       )}
 

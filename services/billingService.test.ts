@@ -1,40 +1,39 @@
-import { describe, it, expect, vi } from 'vitest';
-import { createInvoice } from './billingService';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { createInvoice, updateInvoice } from './billingService';
 
-vi.mock('firebase/firestore', () => ({
-  doc: vi.fn(),
-  setDoc: vi.fn().mockResolvedValue(undefined),
-  serverTimestamp: vi.fn().mockReturnValue('MOCK_TIMESTAMP'),
-  collection: vi.fn(),
-  updateDoc: vi.fn(),
-  query: vi.fn(),
-  where: vi.fn(),
-  getDocs: vi.fn(),
-}));
+const input = {
+  parentName: 'Parent',
+  parentEmail: 'parent@example.com',
+  children: [{ childName: 'Child', sport: 'Football', monthlyFee: 300 }],
+  subtotal: 300,
+  discountedChildName: null,
+  siblingDiscountAmount: 0,
+  netTotal: 300,
+  paymentSchedule: 'monthly' as const,
+  installmentBreakdown: [{ label: 'Installment 1', amount: 300, dueDate: 'Immediate', status: 'Pending' }],
+};
 
-vi.mock('@/lib/firebase', () => ({
-  db: {},
-}));
+describe('billingService — authenticated API requests', () => {
+  beforeEach(() => vi.restoreAllMocks());
 
-describe('billingService — Invoice ID Generation', () => {
-  it('generates non-predictable invoice IDs using cryptographically random UUID with INV-FAM- prefix', async () => {
-    const input = {
-      parentName: 'Robert Vance',
-      parentEmail: 'robert.vance@gmail.com',
-      children: [{ childName: 'Marcus Vance', sport: 'Football', monthlyFee: 300 }],
-      subtotal: 300,
-      discountedChildName: null,
-      siblingDiscountAmount: 0,
-      netTotal: 300,
-      paymentSchedule: 'monthly' as const,
-      installmentBreakdown: [{ label: 'Installment 1', amount: 300, dueDate: 'Immediate', status: 'Pending' }],
-    };
+  it('creates an invoice through the API with a bearer token', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ invoice: { id: 'cuid_invoice' } }), { status: 201 })
+    );
 
-    const invoice1 = await createInvoice(input);
-    const invoice2 = await createInvoice(input);
+    await createInvoice(input, undefined, 'firebase-token');
 
-    expect(invoice1.id).toMatch(/^INV-FAM-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
-    expect(invoice2.id).toMatch(/^INV-FAM-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
-    expect(invoice1.id).not.toEqual(invoice2.id);
+    expect(fetchMock).toHaveBeenCalledWith('/api/invoices', expect.objectContaining({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer firebase-token',
+      },
+    }));
+  });
+
+  it('rejects invoice writes without an authentication token', async () => {
+    await expect(createInvoice(input)).rejects.toThrow('Authentication required');
+    await expect(updateInvoice('invoice_1', { payment_status: 'paid' })).rejects.toThrow('Authentication required');
   });
 });
