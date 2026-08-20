@@ -59,7 +59,7 @@ Maintain an ongoing mental audit across:
 ### Security
 - Authentication correctness
 - Authorization correctness
-- Firestore rules
+- Database access controls
 - Server-side validation
 - Secrets handling
 - Least privilege
@@ -77,7 +77,7 @@ Maintain an ongoing mental audit across:
 
 ### Economics
 - AI/API cost awareness
-- Firebase/service consumption
+- Authentication and service consumption
 - Storage and bandwidth
 - Operational complexity
 - Cost per active user where estimable

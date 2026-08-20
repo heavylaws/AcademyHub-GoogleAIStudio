@@ -29,7 +29,7 @@ Read:
 5. `README.md` if present
 6. package/dependency configuration
 7. application routes and major UI components
-8. Firebase configuration and Firestore rules
+8. database configuration, migrations, and authorization policy
 9. backend/server/cloud functions
 10. authentication and authorization logic
 11. tests and test configuration

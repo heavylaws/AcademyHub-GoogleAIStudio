@@ -37,11 +37,8 @@ function HomePageContent() {
     }
 
     const loadUsers = async () => {
-      const currentToken = await user.getIdToken();
       const response = await fetch('/api/users/role', {
-        headers: {
-          Authorization: `Bearer ${currentToken}`,
-        },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -66,13 +63,12 @@ function HomePageContent() {
     if (!user) return;
     setAdminBusy(true);
     try {
-      const idToken = await user.getIdToken();
       const response = await fetch('/api/users/role', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ uid, role: nextRole }),
       });
 

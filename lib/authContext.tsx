@@ -1,138 +1,158 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import {
-  User,
-  UserCredential,
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  onIdTokenChanged,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-  signOut as firebaseSignOut,
-  updateProfile,
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createAuthClient } from 'better-auth/react';
+
+const authClient = createAuthClient();
 
 export type UserRole = 'admin' | 'coach' | 'parent' | string | null;
 
+export interface AuthenticatedUser {
+  id: string;
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL: string | null;
+  role: UserRole;
+}
+
 export interface AuthContextType {
-  user: User | null;
+  user: AuthenticatedUser | null;
   role: UserRole;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<UserCredential>;
-  register: (email: string, password: string, displayName?: string) => Promise<UserCredential>;
-  signInWithGoogle: () => Promise<UserCredential>;
+  signIn: (email: string, password: string) => Promise<AuthenticatedUser>;
+  register: (email: string, password: string, displayName?: string) => Promise<AuthenticatedUser>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function getErrorMessage(error: { message?: string } | null, fallback: string): string {
+  return error?.message || fallback;
+}
+
+function toAuthenticatedUser(value: unknown): AuthenticatedUser | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const user = value as Record<string, unknown>;
+  if (typeof user.id !== 'string' || typeof user.email !== 'string') {
+    return null;
+  }
+
+  const role = typeof user.role === 'string' ? user.role.toLowerCase() : null;
+  const displayName = typeof user.name === 'string' && user.name.trim()
+    ? user.name
+    : user.email.split('@')[0];
+
+  return {
+    id: user.id,
+    uid: user.id,
+    email: user.email,
+    displayName,
+    photoURL: typeof user.image === 'string' ? user.image : null,
+    role,
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const bootstrapInFlightRef = useRef<Record<string, boolean>>({});
 
-  const bootstrapUserRecord = useCallback(async (currentUser: User) => {
-    const uid = currentUser.uid;
-    if (bootstrapInFlightRef.current[uid]) {
-      return;
+  const refreshSession = useCallback(async (): Promise<AuthenticatedUser | null> => {
+    const result = await authClient.getSession();
+    if (result.error) {
+      throw new Error(getErrorMessage(result.error, 'Unable to load the authentication session.'));
     }
 
-    bootstrapInFlightRef.current[uid] = true;
-
-    try {
-      const idToken = await currentUser.getIdToken();
-      const response = await fetch('/api/auth/bootstrap', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Bootstrap failed');
-      }
-
-      const payload = (await response.json()) as { role?: string };
-      const refreshedToken = await currentUser.getIdTokenResult(true);
-      const claimRole = refreshedToken.claims.role as string | undefined;
-      setRole(claimRole || payload.role || null);
-    } catch (err) {
-      console.error('Error bootstrapping user role:', err);
-    } finally {
-      bootstrapInFlightRef.current[uid] = false;
-    }
+    const currentUser = toAuthenticatedUser(result.data?.user);
+    setUser(currentUser);
+    setRole(currentUser?.role ?? null);
+    return currentUser;
   }, []);
 
   useEffect(() => {
-    const resolveRole = async (currentUser: User | null) => {
-      setUser(currentUser);
-      if (!currentUser) {
-        bootstrapInFlightRef.current = {};
-        setRole(null);
-        setLoading(false);
-        return;
-      }
+    let active = true;
 
-      try {
-        const idTokenResult = await currentUser.getIdTokenResult();
-        const claimRole = idTokenResult.claims.role as string | undefined;
-        setRole(claimRole || null);
-      } catch (err) {
-        console.error('Error resolving user role:', err);
-        setRole(null);
-      } finally {
-        setLoading(false);
-      }
+    void authClient.getSession()
+      .then((result) => {
+        if (active) {
+          if (result.error) {
+            console.error(
+              'Unable to resolve Better Auth session:',
+              getErrorMessage(result.error, 'Unable to load the authentication session.')
+            );
+            setUser(null);
+            setRole(null);
+            return;
+          }
 
-      await bootstrapUserRecord(currentUser);
-    };
-
-    const unsubscribeAuth = onAuthStateChanged(auth, resolveRole);
-    const unsubscribeToken = onIdTokenChanged(auth, resolveRole);
+          const currentUser = toAuthenticatedUser(result.data?.user);
+          setUser(currentUser);
+          setRole(currentUser?.role ?? null);
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          console.error('Unable to resolve Better Auth session:', error);
+          setUser(null);
+          setRole(null);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
 
     return () => {
-      unsubscribeAuth();
-      unsubscribeToken();
+      active = false;
     };
-  }, [bootstrapUserRecord]);
+  }, []);
 
-  const signIn = async (email: string, password: string): Promise<UserCredential> => {
+  const signIn = async (email: string, password: string): Promise<AuthenticatedUser> => {
     setLoading(true);
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      await bootstrapUserRecord(cred.user);
-      return cred;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (email: string, password: string, displayName?: string): Promise<UserCredential> => {
-    setLoading(true);
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      if (displayName && displayName.trim()) {
-        await updateProfile(cred.user, { displayName: displayName.trim() });
+      const result = await authClient.signIn.email({ email, password });
+      if (result.error) {
+        throw new Error(getErrorMessage(result.error, 'Authentication failed.'));
       }
-      await bootstrapUserRecord(cred.user);
-      return cred;
+
+      const currentUser = await refreshSession();
+      if (!currentUser) {
+        throw new Error('Authentication succeeded but no session was created.');
+      }
+
+      return currentUser;
     } finally {
       setLoading(false);
     }
   };
 
-  const signInWithGoogle = async (): Promise<UserCredential> => {
+  const register = async (
+    email: string,
+    password: string,
+    displayName?: string
+  ): Promise<AuthenticatedUser> => {
     setLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      const cred = await signInWithPopup(auth, provider);
-      await bootstrapUserRecord(cred.user);
-      return cred;
+      const result = await authClient.signUp.email({
+        email,
+        password,
+        name: displayName?.trim() || email.split('@')[0],
+      });
+      if (result.error) {
+        throw new Error(getErrorMessage(result.error, 'Registration failed.'));
+      }
+
+      const currentUser = await refreshSession();
+      if (!currentUser) {
+        throw new Error('Registration succeeded but no session was created.');
+      }
+
+      return currentUser;
     } finally {
       setLoading(false);
     }
@@ -141,7 +161,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async (): Promise<void> => {
     setLoading(true);
     try {
-      await firebaseSignOut(auth);
+      const result = await authClient.signOut();
+      if (result.error) {
+        throw new Error(getErrorMessage(result.error, 'Failed to sign out.'));
+      }
+
       setUser(null);
       setRole(null);
     } finally {
@@ -150,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signIn, register, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, role, loading, signIn, register, signOut }}>
       {children}
     </AuthContext.Provider>
   );

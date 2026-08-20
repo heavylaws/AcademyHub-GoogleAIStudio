@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInvoice, updateInvoice } from './billingService';
 
 const input = {
@@ -13,27 +13,38 @@ const input = {
   installmentBreakdown: [{ label: 'Installment 1', amount: 300, dueDate: 'Immediate', status: 'Pending' }],
 };
 
-describe('billingService — authenticated API requests', () => {
+describe('billingService - authenticated API requests', () => {
   beforeEach(() => vi.restoreAllMocks());
 
-  it('creates an invoice through the API with a bearer token', async () => {
+  it('creates an invoice through the API with the browser session cookie', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ invoice: { id: 'cuid_invoice' } }), { status: 201 })
     );
 
-    await createInvoice(input, undefined, 'firebase-token');
+    await createInvoice(input);
 
     expect(fetchMock).toHaveBeenCalledWith('/api/invoices', expect.objectContaining({
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer firebase-token',
       },
     }));
   });
 
-  it('rejects invoice writes without an authentication token', async () => {
-    await expect(createInvoice(input)).rejects.toThrow('Authentication required');
-    await expect(updateInvoice('invoice_1', { payment_status: 'paid' })).rejects.toThrow('Authentication required');
+  it('updates invoice writes through the browser session cookie', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ invoice: { id: 'invoice_1' } }), { status: 200 })
+    );
+
+    await updateInvoice('invoice_1', { payment_status: 'paid' });
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/invoices/invoice_1', expect.objectContaining({
+      method: 'PATCH',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }));
   });
 });

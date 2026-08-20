@@ -84,7 +84,6 @@ export default function BillingSection() {
         throw new Error('Authentication required: Please sign in to issue invoices.');
       }
 
-      const token = await user.getIdToken();
       await createInvoice({
         parentName: targetParentName,
         parentEmail: targetParentEmail,
@@ -97,7 +96,7 @@ export default function BillingSection() {
         installmentBreakdown: inst,
         payment_status: 'pending',
         issuedDate: new Date().toISOString().split('T')[0],
-      }, undefined, token);
+      });
 
       setActionSuccessMessage('Consolidated invoice persisted to Postgres.');
       setTimeout(() => setActionSuccessMessage(null), 3500);
@@ -113,8 +112,7 @@ export default function BillingSection() {
       if (!user) {
         throw new Error('Authentication required: Please sign in to update invoices.');
       }
-      const token = await user.getIdToken();
-      await updateInvoice(invoiceId, { payment_status: newStatus }, token);
+      await updateInvoice(invoiceId, { payment_status: newStatus });
       setActionSuccessMessage(`Invoice ${invoiceId} updated to ${newStatus.toUpperCase()}`);
       setTimeout(() => setActionSuccessMessage(null), 3000);
     } catch (err) {

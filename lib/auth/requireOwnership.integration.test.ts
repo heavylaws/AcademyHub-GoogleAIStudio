@@ -18,9 +18,9 @@ describe('requireOwnership assessment live Postgres join', () => {
   it('resolves ownership through Assessment.athlete.parentUserId', async () => {
     await prisma.user.createMany({
       data: [
-        { id: parentId, email: `${parentId}@example.com`, role: 'PARENT' },
-        { id: otherParentId, email: `${otherParentId}@example.com`, role: 'PARENT' },
-        { id: coachId, email: `${coachId}@example.com`, role: 'COACH' },
+        { id: parentId, email: `${parentId}@example.com`, displayName: 'Test Parent', role: 'PARENT' },
+        { id: otherParentId, email: `${otherParentId}@example.com`, displayName: 'Other Test Parent', role: 'PARENT' },
+        { id: coachId, email: `${coachId}@example.com`, displayName: 'Test Coach', role: 'COACH' },
       ],
     });
     await prisma.athlete.create({

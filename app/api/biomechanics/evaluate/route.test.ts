@@ -215,7 +215,7 @@ describe('POST /api/biomechanics/evaluate', () => {
   // Test (d): Authentication & Role Enforcement
   describe('d. Authentication & Role Enforcement', () => {
     it('rejects unauthenticated requests with status 401', async () => {
-      mockVerifyRequestAuth.mockRejectedValueOnce(new AuthError('Missing Authorization header', 401));
+      mockVerifyRequestAuth.mockRejectedValueOnce(new AuthError('Missing authentication session', 401));
 
       const req = new NextRequest('http://localhost:3000/api/biomechanics/evaluate', {
         method: 'POST',
@@ -226,7 +226,7 @@ describe('POST /api/biomechanics/evaluate', () => {
       const res = await POST(req);
       expect(res.status).toBe(401);
       const json = await res.json();
-      expect(json.error).toBe('Missing Authorization header');
+      expect(json.error).toBe('Missing authentication session');
     });
 
     it('rejects parent role requests with status 403', async () => {

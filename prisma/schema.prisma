@@ -1,6 +1,6 @@
 // AcademyHub Prisma Schema
 // Target DB: Cloud SQL for Postgres 15+ (me-central1)
-// System of record replacing Firestore document/array models with normalized tables.
+// System of record using normalized relational tables.
 
 generator client {
   provider = "prisma-client-js"
@@ -54,15 +54,17 @@ enum ChurnRisk {
 // MODELS
 // ==========================================
 
-/// Users table: Primary account profiles linked to Firebase Auth UID
+/// Users table: Primary application account profiles
 model User {
-  /// id matches Firebase Auth UID (string PK, not auto-increment)
-  id          String   @id
-  email       String   @unique
-  displayName String?  @map("display_name")
-  role        UserRole @default(PARENT)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  /// Stable Better Auth user ID (string PK, not auto-increment)
+  id            String   @id
+  email         String   @unique
+  displayName   String   @map("display_name")
+  emailVerified Boolean  @default(false) @map("email_verified")
+  image         String?
+  role          UserRole @default(PARENT)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   // Relationships
   athletes     Athlete[]     @relation("ParentAthletes")
@@ -70,8 +72,64 @@ model User {
   invoices     Invoice[]     @relation("ParentInvoices")
   schedules    Schedule[]    @relation("CoachSchedules")
   coachProfile CoachProfile? @relation("UserCoachProfile")
+  sessions     Session[]
+  accounts     Account[]
 
   @@map("users")
+}
+
+/// Better Auth database-backed login sessions
+model Session {
+  id        String   @id
+  expiresAt DateTime @map("expires_at")
+  token     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  userId    String   @map("user_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+/// Better Auth credential account records
+model Account {
+  id                    String    @id
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  issuer                String
+  userId                String    @map("user_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([issuer, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+/// Better Auth verification records
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verification")
 }
 
 /// Athletes table: Youth profiles linked to parent user

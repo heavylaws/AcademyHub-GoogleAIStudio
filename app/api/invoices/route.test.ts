@@ -25,7 +25,7 @@ describe('/api/invoices collection routes', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns 401 before querying when authentication fails', async () => {
-    mockVerifyRequestAuth.mockRejectedValueOnce(new AuthError('Missing Authorization header', 401));
+    mockVerifyRequestAuth.mockRejectedValueOnce(new AuthError('Missing authentication session', 401));
     const response = await GET(new NextRequest('http://localhost/api/invoices'));
     expect(response.status).toBe(401);
     expect(mockListInvoicesAdmin).not.toHaveBeenCalled();

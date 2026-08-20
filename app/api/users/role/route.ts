@@ -3,10 +3,14 @@ import { prisma } from '@/lib/prisma';
 import { verifyRequestAuth } from '@/lib/auth/verifyRequestAuth';
 import { requireRole } from '@/lib/auth/requireRole';
 import { AuthError } from '@/lib/auth/types';
-import { getAuth } from 'firebase-admin/auth';
-import '@/lib/firebaseAdmin';
+import { Prisma, UserRole } from '@prisma/client';
 
 const validRoles = new Set(['admin', 'coach', 'parent']);
+const roleMap = {
+  admin: UserRole.ADMIN,
+  coach: UserRole.COACH,
+  parent: UserRole.PARENT,
+} as const;
 
 export const dynamic = 'force-dynamic';
 
@@ -59,19 +63,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid role value. Allowed: admin, coach, parent.' }, { status: 400 });
     }
 
-    const targetUser = await prisma.user.findUnique({ where: { id: uid } });
-    if (!targetUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    const normalizedRole = role as keyof typeof roleMap;
+
+    try {
+      await prisma.user.update({
+        where: { id: uid },
+        data: { role: roleMap[normalizedRole] },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      throw error;
     }
 
-    const claimRole = role as 'admin' | 'coach' | 'parent';
-    await getAuth().setCustomUserClaims(uid, { role: claimRole });
-    await prisma.user.update({
-      where: { id: uid },
-      data: { role: claimRole.toUpperCase() as 'ADMIN' | 'COACH' | 'PARENT' },
-    });
-
-    return NextResponse.json({ success: true, role: claimRole });
+    return NextResponse.json({ success: true, role: normalizedRole });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });

@@ -110,7 +110,7 @@ export default function SchedulingSection() {
           </p>
         </div>
         <div className="flex items-center gap-2 font-mono text-xs bg-slate-50 dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
-          <span className="text-slate-500 dark:text-slate-400">Target Firestore:</span>
+          <span className="text-slate-500 dark:text-slate-400">Target Postgres:</span>
           <span className="text-emerald-600 dark:text-emerald-400 font-bold">&quot;schedules&quot;</span>
         </div>
       </div>

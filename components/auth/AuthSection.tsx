@@ -29,6 +29,8 @@ export default function AuthSection() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const isDev = process.env.NODE_ENV !== 'production';
+  const getErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback;
 
   const presetAccounts = [
     {
@@ -63,7 +65,7 @@ export default function AuthSection() {
     setDisplayName('');
     setMode('login');
     setErrorMessage(null);
-    setSuccessMessage(`Loaded ${preset.role.toUpperCase()} credentials into form. Click "Sign In with Firebase Auth" to authenticate.`);
+    setSuccessMessage(`Loaded ${preset.role.toUpperCase()} credentials into form. Click "Sign In" to authenticate.`);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -75,14 +77,13 @@ export default function AuthSection() {
     try {
       await signIn(email, password);
       setSuccessMessage(`Successfully signed in as ${email}`);
-    } catch (err: any) {
-      console.error('Firebase Auth sign-in error:', err);
-      if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/user-not-found' || err?.code === 'auth/wrong-password') {
+    } catch (err) {
+      const message = getErrorMessage(err, 'Authentication failed.');
+      console.error('Sign-in error:', err);
+      if (/invalid (email|password)|invalid credentials/i.test(message)) {
         setErrorMessage('Invalid email or password. Please verify your credentials.');
-      } else if (err?.code === 'auth/too-many-requests') {
-        setErrorMessage('Access temporarily blocked due to many failed attempts. Try again later.');
       } else {
-        setErrorMessage(err?.message || 'Authentication failed.');
+        setErrorMessage(message);
       }
     } finally {
       setSubmitting(false);
@@ -96,18 +97,17 @@ export default function AuthSection() {
     setSuccessMessage(null);
 
     try {
-      const userCredential = await register(email, password, displayName);
-      const firstUser = !role || role === 'parent';
-      const assignedRole = firstUser ? 'admin' : 'parent';
-      setSuccessMessage(`Account created for ${userCredential.user.email}. Assigned role: ${assignedRole}`);
-    } catch (err: any) {
-      console.error('Firebase Auth registration error:', err);
-      if (err?.code === 'auth/email-already-in-use') {
+      const registeredUser = await register(email, password, displayName);
+      setSuccessMessage(`Account created for ${registeredUser.email}. Assigned role: ${registeredUser.role || 'parent'}`);
+    } catch (err) {
+      const message = getErrorMessage(err, 'Registration failed.');
+      console.error('Registration error:', err);
+      if (/already exists|already registered|email.*taken/i.test(message)) {
         setErrorMessage('This email is already registered. Please sign in instead or use another address.');
-      } else if (err?.code === 'auth/weak-password') {
+      } else if (/password.*(weak|short)|password.*least/i.test(message)) {
         setErrorMessage('Password is too weak. Use at least 6 characters.');
       } else {
-        setErrorMessage(err?.message || 'Registration failed.');
+        setErrorMessage(message);
       }
     } finally {
       setSubmitting(false);
@@ -119,9 +119,9 @@ export default function AuthSection() {
       await signOut();
       setSuccessMessage('Successfully signed out.');
       setErrorMessage(null);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Sign-out error:', err);
-      setErrorMessage(err?.message || 'Failed to sign out.');
+      setErrorMessage(getErrorMessage(err, 'Failed to sign out.'));
     }
   };
 
@@ -135,7 +135,7 @@ export default function AuthSection() {
             Secure Role-Based Authentication & COPPA Privacy Gate
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            Firebase Authentication, role-based document authorization, and multi-tenant youth privacy filters.
+            Better Auth sessions, role-based authorization, and multi-tenant youth privacy filters.
           </p>
         </div>
         <div className="flex items-center gap-2 font-mono text-xs bg-slate-50 dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -227,17 +227,17 @@ export default function AuthSection() {
 
       {/* Grid for Form & RBAC Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Real Firebase Login Form */}
+        {/* Email and password sign-in form */}
         <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
             <Key className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-            Firebase Authentication Gateway
+            AcademyHub Authentication Gateway
           </h3>
 
           {user ? (
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
-                <div className="font-bold text-slate-800 dark:text-slate-200 text-sm">Active Firebase Session</div>
+                <div className="font-bold text-slate-800 dark:text-slate-200 text-sm">Active Session</div>
                 <div className="text-slate-600 dark:text-slate-400">Email: <span className="font-mono text-slate-900 dark:text-white font-semibold">{user.email}</span></div>
                 <div className="text-slate-600 dark:text-slate-400">UID: <span className="font-mono text-cyan-600 dark:text-cyan-400">{user.uid}</span></div>
                 <div className="text-slate-600 dark:text-slate-400">Role: <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase">{role || 'None'}</span></div>
@@ -335,16 +335,16 @@ export default function AuthSection() {
                     <span>{mode === 'login' ? 'Signing In...' : 'Registering...'}</span>
                   </>
                 ) : (
-                  <span>{mode === 'login' ? 'Sign In with Firebase Auth' : 'Create Account & Bootstrap Role'}</span>
+                  <span>{mode === 'login' ? 'Sign In' : 'Create Account'}</span>
                 )}
               </button>
             </form>
           )}
 
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
-            <div className="font-bold text-slate-800 dark:text-slate-200">Active Session Claims:</div>
+            <div className="font-bold text-slate-800 dark:text-slate-200">Active Session Details:</div>
             <div>UID: <span className="font-mono text-cyan-600 dark:text-cyan-400">{user?.uid || 'Not signed in'}</span></div>
-            <div>Role Claim: <span className="font-mono text-emerald-600 dark:text-emerald-400">{role || 'None'}</span></div>
+            <div>Role: <span className="font-mono text-emerald-600 dark:text-emerald-400">{role || 'None'}</span></div>
           </div>
         </div>
 
@@ -396,9 +396,9 @@ export default function AuthSection() {
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 space-y-1 text-[11px]">
             <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              Active Firestore Security Policy:
+              Active Postgres Authorization Policy:
             </div>
-            <div className="font-mono text-cyan-600 dark:text-cyan-400">[DEFAULT_DENY] All reads/writes require valid JWT role claims</div>
+            <div className="font-mono text-cyan-600 dark:text-cyan-400">[DEFAULT_DENY] All reads/writes require a valid database-backed session</div>
             <div className="font-mono text-slate-500 dark:text-slate-400">[PARENT_SCOPE] isParentOf(parentEmail) enforced on athletes & invoices</div>
           </div>
         </div>
@@ -406,5 +406,4 @@ export default function AuthSection() {
     </div>
   );
 }
-
 

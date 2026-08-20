@@ -21,7 +21,7 @@ A work item may be called **DONE** only when all applicable gates below pass.
 
 - [ ] Authentication is correct.
 - [ ] Authorization is enforced at the correct trust boundary.
-- [ ] Firestore/server rules remain secure.
+- [ ] Database access controls and server authorization remain secure.
 - [ ] Untrusted input is validated.
 - [ ] No secrets or credentials were introduced.
 

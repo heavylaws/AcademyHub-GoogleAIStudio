@@ -3,7 +3,7 @@
 This directory contains the Prisma schema and initial database migrations for AcademyHub's transition to PostgreSQL as the primary system of record.
 
 > **Phase 0 Status Note:**
-> This database schema and initial migration represent Phase 0 of the system migration. The application currently continues to read and write via Firestore. No API routes, components, or services import `lib/prisma.ts` or query Postgres in Phase 0. Phase 1 (server-side authorization layer) and Phase 2 (route rewiring) will connect application logic directly to this database.
+> This database schema is AcademyHub's system of record. Application routes use Prisma and Postgres, and Better Auth stores identities and sessions in the same database.
 
 ---
 

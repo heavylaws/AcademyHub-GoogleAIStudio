@@ -177,10 +177,10 @@ export default function BiomechanicsSection() {
 
     try {
       if (!user || !athleteObj) throw new Error('An authenticated user and athlete are required.');
-      const token = await user.getIdToken();
       const response = await fetch('/api/assessments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
         athlete_id: athleteObj.id,
         athlete_name: athleteObj.name,

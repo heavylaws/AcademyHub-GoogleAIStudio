@@ -122,7 +122,7 @@ export default function PerformanceTimelineChart({
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {athleteName ? `${athleteName} • ` : ''}
             {selectedSport && selectedSport !== 'all' ? `${selectedSport} • ` : ''}
-            Chronological telemetry stream updated via live Firestore onSnapshot.
+            Chronological telemetry stream updated through the AcademyHub API.
           </p>
         </div>
 

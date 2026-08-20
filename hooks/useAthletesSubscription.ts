@@ -52,9 +52,8 @@ export function useAthletesSubscription(): UseAthletesReturn {
           throw authError;
         }
 
-        const token = await user.getIdToken();
         const response = await fetch('/api/athletes', {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
           cache: 'no-store',
         });
         const data = await response.json();

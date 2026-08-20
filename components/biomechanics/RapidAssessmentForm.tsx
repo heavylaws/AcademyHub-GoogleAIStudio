@@ -213,7 +213,6 @@ export default function RapidAssessmentForm({
       const athlete = selectedAthlete;
 
       // 1. Process assessment through the evaluation service (deterministic or Gemini AI based on feature flag)
-      const authToken = await user.getIdToken();
       const evaluated = await evaluateAssessment({
         athlete_id: athlete.id,
         athlete_name: athlete.name,
@@ -241,15 +240,15 @@ export default function RapidAssessmentForm({
           video_storage_path: attachedFile?.storagePath,
           smart_grid_processed: Boolean(aiPipelineActive),
         },
-      }, undefined, authToken);
+      });
 
       // 2. Persist the evaluated result through the authenticated Postgres API.
       const persistResponse = await fetch('/api/assessments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
         },
+        credentials: 'include',
         body: JSON.stringify(evaluated),
       });
       const persistData = await persistResponse.json();

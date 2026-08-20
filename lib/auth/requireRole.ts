@@ -1,11 +1,10 @@
 import { AuthUser, UserRole, AuthError } from './types';
 
 /**
- * Enforces role-based access control against the user's custom claims.
- * Role is sourced EXCLUSIVELY from decoded Firebase custom claims (user.role / user.claims.role).
- * ZERO Firestore or Postgres fallbacks.
+ * Enforces role-based access control against the verified request principal.
+ * Role resolution is intentionally performed before this helper is called.
  * 
- * Fails closed if claims are missing, role is undefined, or role is not in allowedRoles.
+ * Fails closed if role is missing, undefined, or not in allowedRoles.
  */
 export function requireRole(user: AuthUser, allowedRoles: UserRole[]): void {
   const role = user.role;

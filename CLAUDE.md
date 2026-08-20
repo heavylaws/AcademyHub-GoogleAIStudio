@@ -39,7 +39,7 @@ You are responsible for continuously evaluating AcademyHub from all of these ang
 - Functional correctness
 - Architecture and code quality
 - Authentication and authorization
-- Firebase / Firestore security and data integrity
+- Authentication, database security, and data integrity
 - AI integration quality, cost, latency, and safety
 - Payments and financial correctness where applicable
 - Performance and scalability
@@ -87,7 +87,7 @@ When trade-offs are necessary, use this order unless a documented business requi
 - Do not introduce a library when a small existing utility or native capability is sufficient.
 - Avoid duplicated business logic.
 - Keep server-side authority authoritative; never rely solely on client-side enforcement for security-sensitive rules.
-- Treat Firebase/Firestore rules as production security boundaries.
+- Treat server-side authorization and database constraints as production security boundaries.
 - Validate untrusted input at trust boundaries.
 - Never commit secrets, API keys, credentials, tokens, or private configuration.
 - Never weaken security rules merely to make development easier.

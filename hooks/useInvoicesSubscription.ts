@@ -44,9 +44,8 @@ export function useInvoicesSubscription(_options: UseInvoicesOptions = {}): UseI
           throw new Error('Authentication required: Please sign in to view invoices.');
         }
 
-        const token = await user.getIdToken();
         const response = await fetch('/api/invoices', {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
           cache: 'no-store',
         });
         const data = await response.json();

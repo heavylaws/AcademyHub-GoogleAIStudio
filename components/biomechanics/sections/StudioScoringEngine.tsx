@@ -145,10 +145,10 @@ export default function StudioScoringEngine({
           className="w-full min-h-[44px] bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
         >
           {isIngesting ? (
-            <>Saving Assessment to Firestore...</>
+            <>Saving Assessment to Postgres...</>
           ) : (
             <>
-              <Upload className="w-4 h-4" /> Save {dataSource === 'manual' ? 'Manual' : 'AI-Agentic'} Assessment to Firestore
+              <Upload className="w-4 h-4" /> Save {dataSource === 'manual' ? 'Manual' : 'AI-Agentic'} Assessment to Postgres
             </>
           )}
         </button>
@@ -157,7 +157,7 @@ export default function StudioScoringEngine({
           <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-mono space-y-1">
             <div className="flex items-center gap-2 font-bold">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              Successfully Written to Firestore!
+              Successfully Written to Postgres!
             </div>
             <div className="text-[10px] text-slate-600 dark:text-slate-400">
               Doc ID: <span className="text-emerald-600 dark:text-emerald-300 font-bold">{lastSavedId}</span> • Score: {computedScore} pts ({activeGradeLetter})

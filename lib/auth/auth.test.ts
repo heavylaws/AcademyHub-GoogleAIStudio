@@ -1,99 +1,144 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { verifyRequestAuth } from './verifyRequestAuth';
 import { requireRole, hasRole } from './requireRole';
 import { requireOwnership } from './requireOwnership';
 import { AuthUser, AuthError } from './types';
 
-// Mock Firebase Admin SDK Auth
-const mockVerifyIdToken = vi.fn();
-vi.mock('firebase-admin/auth', () => ({
-  getAuth: () => ({
-    verifyIdToken: mockVerifyIdToken,
-  }),
+const mockGetSession = vi.fn();
+const mockUserFindUnique = vi.fn();
+const mockUserCreate = vi.fn();
+const mockUserUpdate = vi.fn();
+const mockUserUpsert = vi.fn();
+
+vi.mock('./betterAuth', () => ({
+  auth: {
+    api: {
+      getSession: (args: unknown) => mockGetSession(args),
+    },
+  },
 }));
 
-// Mock Prisma Client singleton
 const mockAthleteFindUnique = vi.fn();
 const mockInvoiceFindUnique = vi.fn();
 const mockAssessmentFindUnique = vi.fn();
 vi.mock('@/lib/prisma', () => ({
   prisma: {
+    user: {
+      findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
+      create: (...args: unknown[]) => mockUserCreate(...args),
+      update: (...args: unknown[]) => mockUserUpdate(...args),
+      upsert: (...args: unknown[]) => mockUserUpsert(...args),
+    },
     athlete: {
-      findUnique: (...args: any[]) => mockAthleteFindUnique(...args),
+      findUnique: (...args: unknown[]) => mockAthleteFindUnique(...args),
     },
     invoice: {
-      findUnique: (...args: any[]) => mockInvoiceFindUnique(...args),
+      findUnique: (...args: unknown[]) => mockInvoiceFindUnique(...args),
     },
     assessment: {
-      findUnique: (...args: any[]) => mockAssessmentFindUnique(...args),
+      findUnique: (...args: unknown[]) => mockAssessmentFindUnique(...args),
     },
   },
 }));
 
-describe('Phase 1 Authorization Middleware (lib/auth)', () => {
+describe('Authorization middleware', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  // ==========================================
-  // 1. verifyRequestAuth Unit Tests
-  // ==========================================
   describe('verifyRequestAuth', () => {
-    it('returns AuthUser object on valid Authorization Bearer header', async () => {
-      const mockDecodedToken = {
-        uid: 'user_parent_123',
+    it('returns the authoritative user for a valid Better Auth session cookie', async () => {
+      mockGetSession.mockResolvedValueOnce({
+        user: { id: 'user_parent_123' },
+      });
+      mockUserFindUnique.mockResolvedValueOnce({
+        id: 'user_parent_123',
         email: 'parent@example.com',
-        role: 'parent',
-        iss: 'https://securetoken.google.com/test-app',
-      };
-      mockVerifyIdToken.mockResolvedValueOnce(mockDecodedToken);
+        role: 'PARENT',
+      });
 
       const request = new Request('http://localhost:3000/api/test', {
-        headers: { Authorization: 'Bearer valid_id_token_123' },
+        headers: { Cookie: 'better-auth.session_token=valid_session_123' },
       });
 
       const user = await verifyRequestAuth(request);
-      expect(user).toBeDefined();
-      expect(user.uid).toBe('user_parent_123');
-      expect(user.email).toBe('parent@example.com');
-      expect(user.role).toBe('parent');
-      expect(user.claims).toEqual(mockDecodedToken);
-      expect(mockVerifyIdToken).toHaveBeenCalledWith('valid_id_token_123');
+      expect(user).toEqual({
+        uid: 'user_parent_123',
+        email: 'parent@example.com',
+        role: 'parent',
+        claims: { role: 'parent' },
+      });
+      expect(mockGetSession).toHaveBeenCalledWith({ headers: request.headers });
+      expect(mockUserFindUnique).toHaveBeenCalledWith({
+        where: { id: 'user_parent_123' },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+        },
+      });
     });
 
-    it('rejects with AuthError 401 when Authorization header is missing', async () => {
+    it('rejects with AuthError 401 when no session cookie resolves to a user', async () => {
+      mockGetSession.mockResolvedValueOnce(null);
+
       const request = new Request('http://localhost:3000/api/test');
 
-      await expect(verifyRequestAuth(request)).rejects.toThrow(AuthError);
-      await expect(verifyRequestAuth(request)).rejects.toThrow('Missing Authorization header');
+      await expect(verifyRequestAuth(request)).rejects.toMatchObject({
+        message: 'Missing authentication session',
+        statusCode: 401,
+      });
     });
 
-    it('rejects with AuthError 401 when Authorization header is malformed or empty', async () => {
-      const reqBasic = new Request('http://localhost:3000/api/test', {
-        headers: { Authorization: 'Basic dXNlcjpwYXNz' },
-      });
-      await expect(verifyRequestAuth(reqBasic)).rejects.toThrow('Malformed Authorization header');
-
-      const reqEmpty = new Request('http://localhost:3000/api/test', {
-        headers: { Authorization: 'Bearer ' },
-      });
-      await expect(verifyRequestAuth(reqEmpty)).rejects.toThrow('Malformed Authorization header');
-    });
-
-    it('rejects with AuthError 401 when token is expired or invalid', async () => {
-      mockVerifyIdToken.mockRejectedValueOnce(new Error('auth/id-token-expired'));
+    it('rejects with AuthError 401 when the session is expired or invalid', async () => {
+      mockGetSession.mockRejectedValueOnce(new Error('session expired'));
 
       const request = new Request('http://localhost:3000/api/test', {
-        headers: { Authorization: 'Bearer expired_token' },
+        headers: { Cookie: 'better-auth.session_token=expired_session' },
       });
 
-      await expect(verifyRequestAuth(request)).rejects.toThrow('Invalid or expired authentication token');
+      await expect(verifyRequestAuth(request)).rejects.toMatchObject({
+        message: 'Invalid or expired authentication session',
+        statusCode: 401,
+      });
+    });
+
+    it('rejects with AuthError 401 when the session user has no authoritative database row', async () => {
+      mockGetSession.mockResolvedValueOnce({
+        user: { id: 'deleted_user_123' },
+      });
+      mockUserFindUnique.mockResolvedValueOnce(null);
+
+      await expect(verifyRequestAuth(new Request('http://localhost:3000/api/test'))).rejects.toMatchObject({
+        message: 'Authenticated user was not found',
+        statusCode: 401,
+      });
+    });
+
+    it('preserves an existing role across repeated session verification without provisioning another user', async () => {
+      mockGetSession.mockResolvedValue({
+        user: { id: 'coach_123' },
+      });
+      mockUserFindUnique.mockResolvedValue({
+        id: 'coach_123',
+        email: 'coach@example.com',
+        role: 'COACH',
+      });
+
+      const request = new Request('http://localhost:3000/api/test', {
+        headers: { Cookie: 'better-auth.session_token=repeat_session' },
+      });
+
+      await expect(verifyRequestAuth(request)).resolves.toMatchObject({ role: 'coach' });
+      await expect(verifyRequestAuth(request)).resolves.toMatchObject({ role: 'coach' });
+
+      expect(mockUserFindUnique).toHaveBeenCalledTimes(2);
+      expect(mockUserCreate).not.toHaveBeenCalled();
+      expect(mockUserUpdate).not.toHaveBeenCalled();
+      expect(mockUserUpsert).not.toHaveBeenCalled();
     });
   });
 
-  // ==========================================
-  // 2. requireRole Unit Tests
-  // ==========================================
   describe('requireRole', () => {
     it('allows access when user role matches single allowed role', () => {
       const user: AuthUser = { uid: 'user_1', role: 'admin', claims: { role: 'admin' } };
@@ -113,7 +158,7 @@ describe('Phase 1 Authorization Middleware (lib/auth)', () => {
       expect(hasRole(parentUser, ['admin', 'coach'])).toBe(false);
     });
 
-    it('rejects with AuthError 403 when user claims/role is missing or undefined', () => {
+    it('rejects with AuthError 403 when role is missing or invalid', () => {
       const noRoleUser: AuthUser = { uid: 'user_4', claims: {} };
       expect(() => requireRole(noRoleUser, ['parent'])).toThrow('Forbidden: Insufficient role permissions');
 
@@ -126,12 +171,10 @@ describe('Phase 1 Authorization Middleware (lib/auth)', () => {
       requireRole(parentUser, ['parent']);
       expect(mockAthleteFindUnique).not.toHaveBeenCalled();
       expect(mockInvoiceFindUnique).not.toHaveBeenCalled();
+      expect(mockUserFindUnique).not.toHaveBeenCalled();
     });
   });
 
-  // ==========================================
-  // 3. requireOwnership Unit Tests
-  // ==========================================
   describe('requireOwnership', () => {
     it('allows parent user who owns the athlete resource', async () => {
       mockAthleteFindUnique.mockResolvedValueOnce({ parentUserId: 'parent_uid_100' });

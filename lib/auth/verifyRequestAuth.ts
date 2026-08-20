@@ -1,41 +1,48 @@
-import '@/lib/firebaseAdmin';
-import { getAuth } from 'firebase-admin/auth';
-import { AuthUser, AuthError } from './types';
+import { prisma } from '@/lib/prisma';
+import { auth } from './betterAuth';
+import { AuthError, AuthUser } from './types';
 
 /**
- * Verifies a Firebase ID token from the incoming Request's Authorization header.
- * 
- * Role and identity are sourced EXCLUSIVELY from decoded custom claims returned by verifyIdToken.
- * Rejects missing headers, malformed Bearer formats, and expired/invalid tokens.
+ * Resolves a Better Auth database-backed session and its authoritative user row.
  */
 export async function verifyRequestAuth(request: Request): Promise<AuthUser> {
-  const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
-
-  if (!authHeader) {
-    throw new AuthError('Missing Authorization header', 401);
-  }
-
-  if (!authHeader.startsWith('Bearer ')) {
-    throw new AuthError('Malformed Authorization header: Must be Bearer token', 401);
-  }
-
-  const token = authHeader.substring(7).trim();
-  if (!token) {
-    throw new AuthError('Malformed Authorization header: Bearer token is empty', 401);
-  }
-
   try {
-    const decodedToken = await getAuth().verifyIdToken(token);
-    const role = decodedToken.role as string | undefined;
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      throw new AuthError('Missing authentication session', 401);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      throw new AuthError('Authenticated user was not found', 401);
+    }
+
+    const role = user.role.toLowerCase();
 
     return {
-      uid: decodedToken.uid,
-      email: decodedToken.email,
+      uid: user.id,
+      email: user.email,
       role,
-      claims: decodedToken,
+      // Vestigial compatibility field for existing authorization helpers.
+      claims: { role },
     };
-  } catch (err: any) {
-    console.warn('Firebase ID token verification failed:', err?.message || String(err));
-    throw new AuthError('Invalid or expired authentication token', 401);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error;
+    }
+
+    console.warn('Better Auth session verification failed:', error);
+    throw new AuthError('Invalid or expired authentication session', 401);
   }
 }

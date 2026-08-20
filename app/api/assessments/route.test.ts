@@ -33,7 +33,7 @@ describe('/api/assessments collection routes', () => {
   });
 
   it('rejects unauthenticated requests before querying', async () => {
-    mockVerifyRequestAuth.mockRejectedValueOnce(new AuthError('Missing Authorization header', 401));
+    mockVerifyRequestAuth.mockRejectedValueOnce(new AuthError('Missing authentication session', 401));
     const response = await GET(new NextRequest('http://localhost/api/assessments'));
     expect(response.status).toBe(401);
     expect(mockListAssessmentsForUser).not.toHaveBeenCalled();

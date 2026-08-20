@@ -48,9 +48,8 @@ export function useAssessmentsSubscription(options: UseAssessmentsOptions = {}):
           throw authError;
         }
 
-        const token = await user.getIdToken();
         const response = await fetch('/api/assessments', {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
           cache: 'no-store',
         });
         const data = await response.json();

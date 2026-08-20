@@ -25,20 +25,19 @@ export default function GeminiAdvisor() {
     }
 
     try {
-      const token = await user.getIdToken();
       const res = await fetch('/api/gemini', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ prompt, context }),
       });
 
       const data = await res.json();
       setResponse(data.text || data.error);
-    } catch (err: any) {
-      setResponse('Kinematic Advisory: Maintain a neutral spine during peak eccentric deceleration. Increase knee flexion angle to 105° on landing to distribute ground reaction force efficiently.');
+    } catch (err) {
+      setResponse(err instanceof Error ? err.message : 'Unable to generate a biomechanics recommendation.');
     } finally {
       setLoading(false);
     }

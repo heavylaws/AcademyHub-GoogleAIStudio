@@ -61,19 +61,18 @@ export default function AthleteProfileSection() {
     e.preventDefault();
     setRegistrationError(null);
     if (!newName.trim() || !newParentEmail.trim() || !newParentUserId.trim() || !user) {
-      setRegistrationError('Athlete name, parent email, parent Firebase UID, and an authenticated session are required.');
+      setRegistrationError('Athlete name, parent email, parent account ID, and an authenticated session are required.');
       return;
     }
 
     const sportsArr = newSports.split(',').map(s => s.trim()).filter(Boolean);
     try {
-      const token = await user.getIdToken();
       const response = await fetch('/api/athletes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify({
           name: newName,
           dob: `${new Date().getFullYear() - Number(newAge)}-01-15`,
@@ -167,7 +166,7 @@ export default function AthleteProfileSection() {
             </span>
           </div>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            Real-time biometric profile syncing historical trajectories and developmental radars directly from Firestore.
+            Real-time biometric profile syncing historical trajectories and developmental radars from the AcademyHub API.
           </p>
         </div>
 
@@ -273,7 +272,7 @@ export default function AthleteProfileSection() {
                 />
               </div>
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Parent Firebase UID</label>
+                <label className="block text-slate-300 font-semibold mb-1">Parent Account ID</label>
                 <input
                   type="text"
                   required
@@ -326,7 +325,7 @@ export default function AthleteProfileSection() {
             <span>Role-Based Access Control / COPPA Security Guard Active</span>
           </div>
           <p className="text-[11px] text-amber-800 dark:text-amber-400">
-            Firestore default-deny rules require Coach or Admin credentials to view full biomechanics telemetry for this athlete.
+            Server-side role authorization requires Coach or Admin credentials to view full biomechanics telemetry for this athlete.
           </p>
         </div>
       )}
@@ -435,7 +434,7 @@ export default function AthleteProfileSection() {
         />
       </div>
 
-      {/* Cross-Sport Skill Progress Cards & Live Firestore Logs */}
+      {/* Cross-Sport Skill Progress Cards & Live Assessment Logs */}
       <div className="space-y-6">
         {sportSummaries
           .filter((sp) => selectedSportTab === 'all' || sp.sport === selectedSportTab)
@@ -455,7 +454,7 @@ export default function AthleteProfileSection() {
                       {sp.sport} Discipline
                     </h4>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Live Firestore synchronization • {sp.assessments.length} logged evaluations
+                      Live API synchronization • {sp.assessments.length} logged evaluations
                     </p>
                   </div>
                 </div>
@@ -484,7 +483,7 @@ export default function AthleteProfileSection() {
                     Live Assessment Logs for {sp.sport}
                   </span>
                   <span className="text-[10px] font-mono text-slate-400">
-                    Source: Firestore &quot;assessments&quot;
+                    Source: AcademyHub assessments API
                   </span>
                 </h5>
 
