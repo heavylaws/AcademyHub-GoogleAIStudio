@@ -5,13 +5,13 @@ import {
   User,
   UserCredential,
   onAuthStateChanged,
+  onIdTokenChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 
 export type UserRole = 'admin' | 'coach' | 'parent' | string | null;
 
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const resolveRole = async (currentUser: User | null) => {
       setUser(currentUser);
       if (!currentUser) {
         setRole(null);
@@ -41,32 +41,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // 1. Check custom claims on ID token (matches firestore.rules: request.auth.token.role)
-        const idTokenResult = await currentUser.getIdTokenResult(true);
+        const idTokenResult = await currentUser.getIdTokenResult();
         const claimRole = idTokenResult.claims.role as string | undefined;
-
-        if (claimRole) {
-          setRole(claimRole);
-        } else {
-          // 2. Fallback to /users/{uid}.role in Firestore (matches firestore.rules: getUserData().role)
-          const userDocRef = doc(db, 'users', currentUser.uid);
-          const userDocSnap = await getDoc(userDocRef);
-          if (userDocSnap.exists()) {
-            const data = userDocSnap.data();
-            setRole(data?.role || null);
-          } else {
-            setRole(null);
-          }
-        }
+        setRole(claimRole || null);
       } catch (err) {
         console.error('Error resolving user role:', err);
         setRole(null);
       } finally {
         setLoading(false);
       }
-    });
+    };
 
-    return () => unsubscribe();
+    const unsubscribeAuth = onAuthStateChanged(auth, resolveRole);
+    const unsubscribeToken = onIdTokenChanged(auth, resolveRole);
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeToken();
+    };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<UserCredential> => {

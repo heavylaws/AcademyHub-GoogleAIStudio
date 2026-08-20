@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { toNumber } from '@/lib/money';
 import { Prisma } from '@prisma/client';
 import {
   ChildRegistration,
@@ -43,16 +44,16 @@ function toFamilyInvoice(invoice: InvoiceWithRelations): FamilyInvoice {
     children: invoice.children.map((child): ChildRegistration => ({
       childName: child.childName,
       sport: child.sport,
-      monthlyFee: child.monthlyFee,
+      monthlyFee: toNumber(child.monthlyFee),
     })),
-    subtotal: invoice.subtotal,
+    subtotal: toNumber(invoice.subtotal),
     discountedChildName: invoice.discountedChildName,
-    siblingDiscountAmount: invoice.siblingDiscountAmount,
-    netTotal: invoice.netTotal,
+    siblingDiscountAmount: toNumber(invoice.siblingDiscountAmount),
+    netTotal: toNumber(invoice.netTotal),
     paymentSchedule: paymentScheduleFromPrisma[invoice.paymentSchedule],
     installmentBreakdown: invoice.installments.map((installment): InstallmentItem => ({
       label: installment.label,
-      amount: installment.amount,
+      amount: toNumber(installment.amount),
       dueDate: installment.dueDate,
       status: installment.status,
     })),

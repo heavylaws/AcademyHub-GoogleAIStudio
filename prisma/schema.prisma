@@ -104,7 +104,7 @@ model AthleteSport {
   id         String   @id @default(cuid())
   athleteId  String   @map("athlete_id")
   sport      String
-  monthlyFee Float    @map("monthly_fee")
+  monthlyFee Decimal  @db.Decimal(10, 2) @map("monthly_fee")
   createdAt  DateTime @default(now()) @map("created_at")
 
   athlete Athlete @relation(fields: [athleteId], references: [id], onDelete: Cascade)
@@ -153,10 +153,10 @@ model Invoice {
   parentName            String          @map("parent_name")
   /// parentEmail is a denormalized display field only, authorization is anchored on parentUserId
   parentEmail           String          @map("parent_email")
-  subtotal              Float
+  subtotal              Decimal         @db.Decimal(10, 2)
   discountedChildName   String?         @map("discounted_child_name")
-  siblingDiscountAmount Float           @default(0) @map("sibling_discount_amount")
-  netTotal              Float           @map("net_total")
+  siblingDiscountAmount Decimal         @default(0) @db.Decimal(10, 2) @map("sibling_discount_amount")
+  netTotal              Decimal         @db.Decimal(10, 2) @map("net_total")
   paymentSchedule       PaymentSchedule @map("payment_schedule")
   paymentStatus         PaymentStatus   @default(PENDING) @map("payment_status")
   issuedDate            String          @map("issued_date")
@@ -180,7 +180,7 @@ model InvoiceChild {
   athleteId  String?  @map("athlete_id")
   childName  String   @map("child_name")
   sport      String
-  monthlyFee Float    @map("monthly_fee")
+  monthlyFee Decimal  @db.Decimal(10, 2) @map("monthly_fee")
   createdAt  DateTime @default(now()) @map("created_at")
 
   invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -196,7 +196,7 @@ model Installment {
   id        String   @id @default(cuid())
   invoiceId String   @map("invoice_id")
   label     String
-  amount    Float
+  amount    Decimal  @db.Decimal(10, 2)
   dueDate   String   @map("due_date")
   status    String
   createdAt DateTime @default(now()) @map("created_at")

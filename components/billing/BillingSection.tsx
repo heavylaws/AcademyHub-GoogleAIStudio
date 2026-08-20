@@ -45,8 +45,6 @@ export default function BillingSection() {
   const [paymentSchedule, setPaymentSchedule] = useState<PaymentSchedule>('monthly');
   const [selectedInvoiceModal, setSelectedInvoiceModal] = useState<FamilyInvoice | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [isProcessingStripe, setIsProcessingStripe] = useState<boolean>(false);
-  const [stripeError, setStripeError] = useState<string | null>(null);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
 
   // Pre-configured family registrations
@@ -122,46 +120,6 @@ export default function BillingSection() {
     } catch (err) {
       console.error('Failed to update invoice status:', err);
       setActionSuccessMessage(err instanceof Error ? err.message : 'Failed to update invoice.');
-    }
-  };
-
-  const handleStripeCheckout = async (invoiceId: string) => {
-    try {
-      setIsProcessingStripe(true);
-      setStripeError(null);
-
-      if (!user) {
-        setStripeError('Authentication required: Please sign in to proceed with payment.');
-        setIsProcessingStripe(false);
-        return;
-      }
-
-      const token = await user.getIdToken();
-      const res = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ invoiceId }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to initiate Stripe Checkout session');
-      }
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No redirect URL returned by Stripe Checkout session endpoint');
-      }
-    } catch (err) {
-      console.error('Stripe Checkout Error:', err);
-      setStripeError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsProcessingStripe(false);
     }
   };
 
@@ -716,19 +674,12 @@ export default function BillingSection() {
               </div>
             </div>
 
-            {stripeError && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs">
-                ⚠️ {stripeError}
-              </div>
-            )}
-
-            {/* Action Buttons */}
+                        {/* Action Buttons */}
             <div className="flex flex-wrap justify-end gap-3 pt-2">
               <button
                 onClick={() => {
                   setSelectedInvoiceModal(null);
-                  setStripeError(null);
-                }}
+                  }}
                 className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 min-h-[44px]"
               >
                 Close
@@ -739,27 +690,9 @@ export default function BillingSection() {
               >
                 <span>🖨️ Print / Save Official PDF</span>
               </button>
-              {selectedInvoiceModal.payment_status !== 'paid' ? (
-                <button
-                  onClick={() => handleStripeCheckout(selectedInvoiceModal.id)}
-                  disabled={isProcessingStripe}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow min-h-[44px] transition-all"
-                >
-                  {isProcessingStripe ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <CreditCard className="w-4 h-4" />
-                  )}
-                  <span>
-                    Pay with Stripe (${selectedInvoiceModal.installmentBreakdown[0]?.amount ?? selectedInvoiceModal.netTotal}.00)
-                  </span>
-                </button>
-              ) : (
-                <span className="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Paid in Full
-                </span>
-              )}
+              <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-mono">
+                Payment recording — coming in Phase 6.
+              </div>
             </div>
           </div>
         </div>
