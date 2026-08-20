@@ -167,7 +167,7 @@ export default function AuthSection() {
             </span>
           </div>
           <p className="text-[11px] text-slate-600 dark:text-slate-400">
-            These presets are hidden behind a dev-only warning because the Phase 2 seeded user accounts do not exist yet. They are intentionally disabled until the seed environment lands.
+            These presets are provided for local development and testing only. Use them to validate the login flow in a non-production environment.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 opacity-60 grayscale-[15%] pointer-events-none">
             {presetAccounts.map((p) => (

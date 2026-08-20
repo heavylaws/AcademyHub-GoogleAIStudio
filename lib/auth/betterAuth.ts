@@ -1,16 +1,13 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { prisma } from '@/lib/prisma';
+import { appEnv } from '@/lib/env';
 import { getInitialUserRole } from './initialUserRole';
 
-const secret = process.env.BETTER_AUTH_SECRET;
-
-if (!secret) {
-  throw new Error('BETTER_AUTH_SECRET is required.');
-}
+const secret = appEnv.betterAuthSecret;
 
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL || process.env.APP_URL,
+  baseURL: appEnv.betterAuthUrl,
   secret,
   database: prismaAdapter(prisma, {
     provider: 'postgresql',

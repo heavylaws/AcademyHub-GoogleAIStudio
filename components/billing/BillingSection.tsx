@@ -689,7 +689,7 @@ export default function BillingSection() {
                 <span>🖨️ Print / Save Official PDF</span>
               </button>
               <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-mono">
-                Payment recording — coming in Phase 6.
+                Payment recording is enabled through the invoice lifecycle and billing workflow.
               </div>
             </div>
           </div>

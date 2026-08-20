@@ -5,13 +5,19 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 0.0.0.0 -p 3000",
+    "start:prod": "prisma migrate deploy && next start -H 0.0.0.0 -p 3000",
     "lint": "eslint .",
     "test": "vitest run",
     "clean": "next clean",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
-    "db:validate": "prisma validate"
+    "db:validate": "prisma validate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
+    "docker:build": "docker build -t academyhub:latest .",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.7.1",
