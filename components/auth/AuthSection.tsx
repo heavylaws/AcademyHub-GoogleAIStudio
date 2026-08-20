@@ -17,12 +17,14 @@ import {
 import { useAuth } from '@/lib/authContext';
 
 export default function AuthSection() {
-  const { user, role, loading: authLoading, signIn, signOut } = useAuth();
+  const { user, role, loading: authLoading, signIn, register, signOut } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -58,6 +60,8 @@ export default function AuthSection() {
   const handlePresetSelect = (preset: typeof presetAccounts[0]) => {
     setEmail(preset.email);
     setPassword(preset.password);
+    setDisplayName('');
+    setMode('login');
     setErrorMessage(null);
     setSuccessMessage(`Loaded ${preset.role.toUpperCase()} credentials into form. Click "Sign In with Firebase Auth" to authenticate.`);
   };
@@ -79,6 +83,31 @@ export default function AuthSection() {
         setErrorMessage('Access temporarily blocked due to many failed attempts. Try again later.');
       } else {
         setErrorMessage(err?.message || 'Authentication failed.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const userCredential = await register(email, password, displayName);
+      const firstUser = !role || role === 'parent';
+      const assignedRole = firstUser ? 'admin' : 'parent';
+      setSuccessMessage(`Account created for ${userCredential.user.email}. Assigned role: ${assignedRole}`);
+    } catch (err: any) {
+      console.error('Firebase Auth registration error:', err);
+      if (err?.code === 'auth/email-already-in-use') {
+        setErrorMessage('This email is already registered. Please sign in instead or use another address.');
+      } else if (err?.code === 'auth/weak-password') {
+        setErrorMessage('Password is too weak. Use at least 6 characters.');
+      } else {
+        setErrorMessage(err?.message || 'Registration failed.');
       }
     } finally {
       setSubmitting(false);
@@ -138,15 +167,15 @@ export default function AuthSection() {
             </span>
           </div>
           <p className="text-[11px] text-slate-600 dark:text-slate-400">
-            Click any demo profile to populate the sign-in form below. Production builds automatically hide these test accounts.
+            These presets are hidden behind a dev-only warning because the Phase 2 seeded user accounts do not exist yet. They are intentionally disabled until the seed environment lands.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 opacity-60 grayscale-[15%] pointer-events-none">
             {presetAccounts.map((p) => (
               <button
                 key={p.role}
                 type="button"
                 onClick={() => handlePresetSelect(p)}
-                className="p-4 min-h-[44px] rounded-xl text-left border bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 hover:border-amber-500/50 dark:hover:border-amber-500/40 transition-all"
+                className="p-4 min-h-[44px] rounded-xl text-left border bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 transition-all"
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
@@ -225,7 +254,39 @@ export default function AuthSection() {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSignIn} className="max-w-md w-full mx-auto space-y-4 text-xs">
+            <form onSubmit={mode === 'login' ? handleSignIn : handleRegister} className="max-w-md w-full mx-auto space-y-4 text-xs">
+              <div className="flex rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 p-1">
+                <button
+                  type="button"
+                  onClick={() => setMode('login')}
+                  className={`flex-1 rounded-lg px-3 py-2 font-bold ${mode === 'login' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('register')}
+                  className={`flex-1 rounded-lg px-3 py-2 font-bold ${mode === 'register' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                >
+                  Register
+                </button>
+              </div>
+
+              {mode === 'register' && (
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Alex Morgan"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 h-11 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Email Address
@@ -271,10 +332,10 @@ export default function AuthSection() {
                 {submitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Signing In...</span>
+                    <span>{mode === 'login' ? 'Signing In...' : 'Registering...'}</span>
                   </>
                 ) : (
-                  <span>Sign In with Firebase Auth</span>
+                  <span>{mode === 'login' ? 'Sign In with Firebase Auth' : 'Create Account & Bootstrap Role'}</span>
                 )}
               </button>
             </form>
