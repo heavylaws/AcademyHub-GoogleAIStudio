@@ -2,6 +2,9 @@
   "name": "ai-studio-applet",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,6 +12,8 @@
     "start:prod": "prisma migrate deploy && next start -H 0.0.0.0 -p 3000",
     "lint": "eslint .",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "verify": "prisma generate && prisma validate && npm run typecheck && npm test && npm run build && npm run lint",
     "clean": "next clean",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
