@@ -3,6 +3,9 @@ const placeholderValues = new Set([
   'replace_with_your_gemini_key',
   'your_api_key_here',
   'placeholder',
+  'set_a_32_char_or_more_secret_here',
+  'set-me-before-production',
+  'set_me_before_production',
 ]);
 
 export function readEnv(name: string, fallback?: string): string {
@@ -20,35 +23,61 @@ export function readEnv(name: string, fallback?: string): string {
   return '';
 }
 
+export function getRequiredEnv(name: string): string {
+  const value = process.env[name]?.trim() ?? '';
+
+  if (!value) {
+    throw new Error(`Environment variable ${name} is required but was missing or empty.`);
+  }
+
+  if (placeholderValues.has(value.toLowerCase())) {
+    throw new Error(`Environment variable ${name} cannot use a placeholder value.`);
+  }
+
+  if (name === 'BETTER_AUTH_SECRET' && value.length < 32) {
+    throw new Error(`Environment variable ${name} must be at least 32 characters long.`);
+  }
+
+  return value;
+}
+
 export function assertProductionEnvironment(): void {
   if (process.env.NODE_ENV !== 'production') {
     return;
   }
 
-  const checks = [
-    'BETTER_AUTH_SECRET',
-    'DATABASE_URL',
-    'APP_URL',
-  ];
+  const checks = ['BETTER_AUTH_SECRET', 'DATABASE_URL', 'APP_URL'] as const;
 
   for (const key of checks) {
-    const value = process.env[key];
-    if (!value) continue;
+    const value = process.env[key]?.trim() ?? '';
 
-    const normalized = value.trim().toLowerCase();
-    if (placeholderValues.has(normalized)) {
+    if (!value || placeholderValues.has(value.toLowerCase())) {
+      throw new Error(`Production config is incomplete. Set a real value for: ${key}`);
+    }
+
+    if (key === 'BETTER_AUTH_SECRET' && value.length < 32) {
       throw new Error(`Production config is incomplete. Set a real value for: ${key}`);
     }
   }
 }
 
 export const appEnv = {
-  appUrl: readEnv('APP_URL', 'http://localhost:3000'),
-  betterAuthUrl: readEnv('BETTER_AUTH_URL', readEnv('APP_URL', 'http://localhost:3000')),
-  betterAuthSecret: readEnv('BETTER_AUTH_SECRET', 'change_me_in_production'),
-  databaseUrl: readEnv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/academyhub?schema=public'),
-  geminiApiKey: readEnv('GEMINI_API_KEY', ''),
-  aiPipelineEnabled: readEnv('NEXT_PUBLIC_ENABLE_AI_PIPELINE', 'false') === 'true',
+  get appUrl() {
+    return readEnv('APP_URL', 'http://localhost:3000');
+  },
+  get betterAuthUrl() {
+    return readEnv('BETTER_AUTH_URL', this.appUrl);
+  },
+  get betterAuthSecret() {
+    return getRequiredEnv('BETTER_AUTH_SECRET');
+  },
+  get databaseUrl() {
+    return process.env.DATABASE_URL?.trim() ?? '';
+  },
+  get geminiApiKey() {
+    return readEnv('GEMINI_API_KEY', '');
+  },
+  get aiPipelineEnabled() {
+    return readEnv('NEXT_PUBLIC_ENABLE_AI_PIPELINE', 'false') === 'true';
+  },
 };
-
-assertProductionEnvironment();

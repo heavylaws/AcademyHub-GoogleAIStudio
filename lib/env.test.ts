@@ -1,32 +1,73 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { assertProductionEnvironment } from './env';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { appEnv, assertProductionEnvironment } from './env';
 
 describe('runtime environment validation', () => {
-  const originalEnv = { ...process.env };
-
   afterEach(() => {
-    process.env = { ...originalEnv };
+    vi.unstubAllEnvs();
   });
 
   it('allows local development with safe defaults', () => {
-    process.env.NODE_ENV = 'development';
+    vi.stubEnv('NODE_ENV', 'development');
     expect(() => assertProductionEnvironment()).not.toThrow();
   });
 
-  it('rejects placeholder secrets in production', () => {
-    process.env.NODE_ENV = 'production';
-    process.env.BETTER_AUTH_SECRET = 'change_me_in_production';
-    process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/academyhub';
-    process.env.APP_URL = 'https://example.com';
+  it('rejects a missing BETTER_AUTH_SECRET in non-production when accessed', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('BETTER_AUTH_SECRET', '');
 
-    expect(() => assertProductionEnvironment()).toThrow('Production config is incomplete');
+    expect(() => appEnv.betterAuthSecret).toThrow('BETTER_AUTH_SECRET');
+  });
+
+  it('rejects a missing BETTER_AUTH_SECRET in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('BETTER_AUTH_SECRET', '');
+    vi.stubEnv('DATABASE_URL', 'postgresql://user:pass@db.internal:5432/academyhub');
+    vi.stubEnv('APP_URL', 'https://example.com');
+
+    expect(() => assertProductionEnvironment()).toThrow('BETTER_AUTH_SECRET');
+  });
+
+  it('rejects an empty BETTER_AUTH_SECRET in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('BETTER_AUTH_SECRET', '   ');
+    vi.stubEnv('DATABASE_URL', 'postgresql://user:pass@db.internal:5432/academyhub');
+    vi.stubEnv('APP_URL', 'https://example.com');
+
+    expect(() => assertProductionEnvironment()).toThrow('BETTER_AUTH_SECRET');
+  });
+
+  it('rejects a placeholder BETTER_AUTH_SECRET in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('BETTER_AUTH_SECRET', 'change_me_in_production');
+    vi.stubEnv('DATABASE_URL', 'postgresql://user:pass@db.internal:5432/academyhub');
+    vi.stubEnv('APP_URL', 'https://example.com');
+
+    expect(() => assertProductionEnvironment()).toThrow('BETTER_AUTH_SECRET');
+  });
+
+  it('rejects a too-short BETTER_AUTH_SECRET in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('BETTER_AUTH_SECRET', 'short-secret');
+    vi.stubEnv('DATABASE_URL', 'postgresql://user:pass@db.internal:5432/academyhub');
+    vi.stubEnv('APP_URL', 'https://example.com');
+
+    expect(() => assertProductionEnvironment()).toThrow('BETTER_AUTH_SECRET');
+  });
+
+  it('rejects a missing DATABASE_URL in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('BETTER_AUTH_SECRET', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv('APP_URL', 'https://example.com');
+
+    expect(() => assertProductionEnvironment()).toThrow('DATABASE_URL');
   });
 
   it('accepts non-placeholder production values', () => {
-    process.env.NODE_ENV = 'production';
-    process.env.BETTER_AUTH_SECRET = 'secure-production-secret-1234567890';
-    process.env.DATABASE_URL = 'postgresql://prod:secret@db.internal:5432/academyhub';
-    process.env.APP_URL = 'https://app.example.com';
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('BETTER_AUTH_SECRET', 'secure-production-secret-1234567890');
+    vi.stubEnv('DATABASE_URL', 'postgresql://user:pass@db.internal:5432/academyhub');
+    vi.stubEnv('APP_URL', 'https://app.example.com');
 
     expect(() => assertProductionEnvironment()).not.toThrow();
   });

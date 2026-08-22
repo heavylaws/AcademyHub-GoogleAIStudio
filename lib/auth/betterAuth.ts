@@ -15,6 +15,8 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    minPasswordLength: 8,
+    maxPasswordLength: 128,
   },
   session: {
     cookieCache: {
@@ -42,7 +44,6 @@ export const auth = betterAuth({
             throw new Error('A request context is required to create a user.');
           }
 
-          // Better Auth runs this hook inside the sign-up transaction.
           const userCount = await context.context.internalAdapter.countTotalUsers();
           return {
             data: {

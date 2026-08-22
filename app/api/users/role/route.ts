@@ -64,24 +64,49 @@ export async function POST(request: Request) {
     }
 
     const normalizedRole = role as keyof typeof roleMap;
+    const existingUser = await prisma.user.findUnique({
+      where: { id: uid },
+      select: { id: true, role: true },
+    });
 
-    try {
-      await prisma.user.update({
-        where: { id: uid },
-        data: { role: roleMap[normalizedRole] },
-      });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
-      }
-
-      throw error;
+    if (!existingUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+
+    const demotingAdmin = existingUser.role === UserRole.ADMIN && normalizedRole !== 'admin';
+
+    if (demotingAdmin) {
+      await prisma.$transaction(async (tx) => {
+        const adminCount = await tx.user.count({
+          where: { role: UserRole.ADMIN },
+        });
+
+        if (adminCount <= 1) {
+          throw new AuthError('Cannot remove the last remaining admin.', 409);
+        }
+
+        await tx.user.update({
+          where: { id: uid },
+          data: { role: roleMap[normalizedRole] },
+        });
+      });
+
+      return NextResponse.json({ success: true, role: normalizedRole });
+    }
+
+    await prisma.user.update({
+      where: { id: uid },
+      data: { role: roleMap[normalizedRole] },
+    });
 
     return NextResponse.json({ success: true, role: normalizedRole });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     console.error('Failed to update user role:', error);

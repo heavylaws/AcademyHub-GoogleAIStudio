@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { getInitialUserRole } from './initialUserRole';
 
 describe('initial Better Auth user role', () => {
-  it('assigns ADMIN to the first registered user', () => {
-    expect(getInitialUserRole(0)).toBe('ADMIN');
+  it('uses parent access for the first self-service registration', () => {
+    expect(getInitialUserRole(0)).toBe('PARENT');
   });
 
-  it('assigns PARENT to the second registered user', () => {
+  it('keeps parent access for subsequent registrations', () => {
     expect(getInitialUserRole(1)).toBe('PARENT');
   });
 
