@@ -72,7 +72,7 @@ export const appEnv = {
     return getRequiredEnv('BETTER_AUTH_SECRET');
   },
   get databaseUrl() {
-    return process.env.DATABASE_URL?.trim() ?? '';
+    return getRequiredEnv('DATABASE_URL');
   },
   get geminiApiKey() {
     return readEnv('GEMINI_API_KEY', '');

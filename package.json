@@ -13,16 +13,20 @@
     "lint": "eslint .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "verify": "prisma generate && prisma validate && npm run typecheck && npm test && npm run build && npm run lint",
+    "verify": "npm ci && prisma generate && prisma validate && npm run typecheck && prisma migrate deploy && npm test && npm run build && npm run lint",
     "clean": "next clean",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
+    "seed:admin-bootstrap": "tsc prisma/seed.ts --module commonjs --target es2020 --outDir .tmp/prisma-seed --skipLibCheck --esModuleInterop && node .tmp/prisma-seed/seed.js",
     "docker:build": "docker build -t academyhub:latest .",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down"
+  },
+  "prisma": {
+    "seed": "npm run seed:admin-bootstrap"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.7.1",

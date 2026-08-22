@@ -18,6 +18,20 @@ describe('runtime environment validation', () => {
     expect(() => appEnv.betterAuthSecret).toThrow('BETTER_AUTH_SECRET');
   });
 
+  it('rejects a missing DATABASE_URL when accessed', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('DATABASE_URL', '');
+
+    expect(() => appEnv.databaseUrl).toThrow('DATABASE_URL');
+  });
+
+  it('rejects a placeholder DATABASE_URL when accessed', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('DATABASE_URL', 'placeholder');
+
+    expect(() => appEnv.databaseUrl).toThrow('DATABASE_URL');
+  });
+
   it('rejects a missing BETTER_AUTH_SECRET in production', () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('BETTER_AUTH_SECRET', '');
