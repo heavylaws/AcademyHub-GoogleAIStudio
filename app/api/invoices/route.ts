@@ -61,9 +61,16 @@ export async function POST(request: Request) {
         );
       }
     }
+    if (!user.academyId) {
+      return NextResponse.json(
+        { error: 'No academy context. User must belong to an academy to create invoices.' },
+        { status: 400 },
+      );
+    }
     const invoice = await createInvoiceAdmin({
       ...body,
       parentUserId,
+      academyId: user.academyId,
     });
     return NextResponse.json({ invoice }, { status: 201 });
   } catch (err) {

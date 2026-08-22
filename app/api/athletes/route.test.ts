@@ -23,7 +23,6 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     athlete: { findMany: (args: unknown) => mockFindMany(args), create: (args: unknown) => mockCreate(args) },
     user: { findUnique: (args: unknown) => mockFindUser(args) },
-    academy: { findFirst: vi.fn().mockResolvedValue({ id: 'dummy_academy' }) },
   },
 }));
 
@@ -57,7 +56,7 @@ describe('/api/athletes collection routes', () => {
   });
 
   it('provisions the caller and creates an athlete for an existing target parent UID', async () => {
-    const coach = { uid: 'coach_1', email: 'coach@example.com', role: 'coach' };
+    const coach = { uid: 'coach_1', email: 'coach@example.com', role: 'coach', academyId: 'acad_1' };
     mockVerifyRequestAuth.mockResolvedValueOnce(coach);
     mockEnsureUserRecord.mockResolvedValueOnce(undefined);
     mockFindUser.mockResolvedValueOnce({ id: 'parent_1' });
@@ -87,5 +86,26 @@ describe('/api/athletes collection routes', () => {
     expect(mockEnsureUserRecord).toHaveBeenCalledWith(coach);
     expect(mockFindUser).toHaveBeenCalledWith({ where: { id: 'parent_1' } });
     expect(mockCreate).toHaveBeenCalledOnce();
+  });
+
+  it('rejects athlete creation when user has no academy context', async () => {
+    const coachNoAcademy = { uid: 'coach_2', email: 'coach2@example.com', role: 'coach' };
+    mockVerifyRequestAuth.mockResolvedValueOnce(coachNoAcademy);
+    mockEnsureUserRecord.mockResolvedValueOnce(undefined);
+    mockFindUser.mockResolvedValueOnce({ id: 'parent_1' });
+
+    const response = await POST(new NextRequest('http://localhost/api/athletes', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Athlete Two',
+        parentUserId: 'parent_1',
+        parentEmail: 'parent@example.com',
+      }),
+    }));
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toMatch(/academy/);
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 });

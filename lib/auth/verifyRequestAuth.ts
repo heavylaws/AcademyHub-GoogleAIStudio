@@ -4,6 +4,13 @@ import { AuthError, AuthUser } from './types';
 
 /**
  * Resolves a Better Auth database-backed session and its authoritative user row.
+ *
+ * Membership resolution:
+ *   - Exactly one membership → use it. Role and academyId come from that row.
+ *   - No memberships → authenticated but unattached. Role and academyId are
+ *     undefined; requireRole will reject downstream.
+ *   - More than one membership → refuse the request. An active-academy selector
+ *     is required before multi-academy users can be supported.
  */
 export async function verifyRequestAuth(request: Request): Promise<AuthUser> {
   try {
@@ -21,8 +28,7 @@ export async function verifyRequestAuth(request: Request): Promise<AuthUser> {
         id: true,
         email: true,
         memberships: {
-          select: { role: true },
-          take: 1,
+          select: { role: true, academyId: true },
         },
       },
     });
@@ -31,12 +37,24 @@ export async function verifyRequestAuth(request: Request): Promise<AuthUser> {
       throw new AuthError('Authenticated user was not found', 401);
     }
 
-    const role = user.memberships[0]?.role?.toLowerCase();
+    const { memberships } = user;
+
+    if (memberships.length > 1) {
+      throw new AuthError(
+        'Multiple academy memberships found. An active-academy selector is required to resolve tenant context.',
+        403,
+      );
+    }
+
+    const membership = memberships[0];
+    const role = membership?.role?.toLowerCase();
+    const academyId = membership?.academyId;
 
     return {
       uid: user.id,
       email: user.email,
       role,
+      academyId,
       // Vestigial compatibility field for existing authorization helpers.
       claims: { role },
     };

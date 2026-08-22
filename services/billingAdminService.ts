@@ -100,12 +100,11 @@ export async function getInvoiceByIdAdmin(invoiceId: string): Promise<FamilyInvo
 }
 
 export async function createInvoiceAdmin(
-  input: CreateInvoiceInput & { parentUserId: string }
+  input: CreateInvoiceInput & { parentUserId: string; academyId: string }
 ): Promise<FamilyInvoice> {
-  const firstAcademy = await prisma.academy.findFirst();
   const invoice = await prisma.invoice.create({
     data: {
-      academyId: firstAcademy?.id || 'dummy_id',
+      academyId: input.academyId,
       parentUserId: input.parentUserId,
       parentName: input.parentName,
       parentEmail: input.parentEmail,
@@ -134,7 +133,7 @@ export async function createInvoiceAdmin(
     },
     include: invoiceInclude,
   });
-  return toFamilyInvoice(invoice as InvoiceWithRelations);
+  return toFamilyInvoice(invoice);
 }
 
 export async function updateInvoiceAdmin(

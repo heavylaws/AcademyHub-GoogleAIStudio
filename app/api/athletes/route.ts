@@ -119,10 +119,16 @@ export async function POST(request: Request) {
       }
     }
 
-    const firstAcademy = await prisma.academy.findFirst();
+    if (!user.academyId) {
+      return NextResponse.json(
+        { error: 'No academy context. User must belong to an academy to create athletes.' },
+        { status: 400 },
+      );
+    }
+
     const athlete = await prisma.athlete.create({
       data: {
-        academyId: firstAcademy?.id || 'dummy_id',
+        academyId: user.academyId,
         name: input.name.trim(),
         dob: input.dob || null,
         parentUserId: input.parentUserId,

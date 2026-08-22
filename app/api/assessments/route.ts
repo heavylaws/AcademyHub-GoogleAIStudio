@@ -58,7 +58,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Athlete not found' }, { status: 400 });
     }
 
-    const assessment = await createAssessment(input, user.uid);
+    if (!user.academyId) {
+      return NextResponse.json(
+        { error: 'No academy context. User must belong to an academy to create assessments.' },
+        { status: 400 },
+      );
+    }
+
+    const assessment = await createAssessment(input, user.uid, user.academyId);
     return NextResponse.json({ assessment }, { status: 201 });
   } catch (err) {
     console.error('Error creating assessment:', err);

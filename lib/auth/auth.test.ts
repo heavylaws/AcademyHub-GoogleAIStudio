@@ -54,7 +54,7 @@ describe('Authorization middleware', () => {
       mockUserFindUnique.mockResolvedValueOnce({
         id: 'user_parent_123',
         email: 'parent@example.com',
-        memberships: [{ role: 'PARENT' }],
+        memberships: [{ role: 'PARENT', academyId: 'acad_1' }],
       });
 
       const request = new Request('http://localhost:3000/api/test', {
@@ -66,6 +66,7 @@ describe('Authorization middleware', () => {
         uid: 'user_parent_123',
         email: 'parent@example.com',
         role: 'parent',
+        academyId: 'acad_1',
         claims: { role: 'parent' },
       });
       expect(mockGetSession).toHaveBeenCalledWith({ headers: request.headers });
@@ -75,8 +76,7 @@ describe('Authorization middleware', () => {
           id: true,
           email: true,
           memberships: {
-            select: { role: true },
-            take: 1,
+            select: { role: true, academyId: true },
           },
         },
       });
@@ -125,7 +125,7 @@ describe('Authorization middleware', () => {
       mockUserFindUnique.mockResolvedValue({
         id: 'coach_123',
         email: 'coach@example.com',
-        memberships: [{ role: 'COACH' }],
+        memberships: [{ role: 'COACH', academyId: 'acad_1' }],
       });
 
       const request = new Request('http://localhost:3000/api/test', {
@@ -139,6 +139,69 @@ describe('Authorization middleware', () => {
       expect(mockUserCreate).not.toHaveBeenCalled();
       expect(mockUserUpdate).not.toHaveBeenCalled();
       expect(mockUserUpsert).not.toHaveBeenCalled();
+    });
+
+    it('returns undefined role and academyId when user has no memberships', async () => {
+      mockGetSession.mockResolvedValueOnce({
+        user: { id: 'unattached_1' },
+      });
+      mockUserFindUnique.mockResolvedValueOnce({
+        id: 'unattached_1',
+        email: 'new@example.com',
+        memberships: [],
+      });
+
+      const request = new Request('http://localhost:3000/api/test', {
+        headers: { Cookie: 'better-auth.session_token=unattached_session' },
+      });
+
+      const user = await verifyRequestAuth(request);
+      expect(user.uid).toBe('unattached_1');
+      expect(user.role).toBeUndefined();
+      expect(user.academyId).toBeUndefined();
+    });
+
+    it('throws AuthError 403 when user has multiple memberships', async () => {
+      mockGetSession.mockResolvedValueOnce({
+        user: { id: 'multi_1' },
+      });
+      mockUserFindUnique.mockResolvedValueOnce({
+        id: 'multi_1',
+        email: 'multi@example.com',
+        memberships: [
+          { role: 'ADMIN', academyId: 'acad_1' },
+          { role: 'PARENT', academyId: 'acad_2' },
+        ],
+      });
+
+      const request = new Request('http://localhost:3000/api/test', {
+        headers: { Cookie: 'better-auth.session_token=multi_session' },
+      });
+
+      await expect(verifyRequestAuth(request)).rejects.toMatchObject({
+        message: 'Multiple academy memberships found. An active-academy selector is required to resolve tenant context.',
+        statusCode: 403,
+      });
+    });
+
+    it('zero-membership user is rejected by requireRole downstream', async () => {
+      mockGetSession.mockResolvedValueOnce({
+        user: { id: 'unattached_2' },
+      });
+      mockUserFindUnique.mockResolvedValueOnce({
+        id: 'unattached_2',
+        email: 'unattached2@example.com',
+        memberships: [],
+      });
+
+      const request = new Request('http://localhost:3000/api/test', {
+        headers: { Cookie: 'better-auth.session_token=unattached2_session' },
+      });
+
+      const user = await verifyRequestAuth(request);
+      expect(() => requireRole(user, ['parent', 'coach', 'admin'])).toThrow(
+        'Forbidden: Insufficient role permissions',
+      );
     });
   });
 

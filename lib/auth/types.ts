@@ -10,6 +10,7 @@ export interface AuthUser {
   uid: string;
   email?: string;
   role?: UserRole | string;
+  academyId?: string;
   claims: Record<string, any>;
 }
 
