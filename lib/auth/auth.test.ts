@@ -54,7 +54,7 @@ describe('Authorization middleware', () => {
       mockUserFindUnique.mockResolvedValueOnce({
         id: 'user_parent_123',
         email: 'parent@example.com',
-        role: 'PARENT',
+        memberships: [{ role: 'PARENT' }],
       });
 
       const request = new Request('http://localhost:3000/api/test', {
@@ -74,7 +74,10 @@ describe('Authorization middleware', () => {
         select: {
           id: true,
           email: true,
-          role: true,
+          memberships: {
+            select: { role: true },
+            take: 1,
+          },
         },
       });
     });
@@ -122,7 +125,7 @@ describe('Authorization middleware', () => {
       mockUserFindUnique.mockResolvedValue({
         id: 'coach_123',
         email: 'coach@example.com',
-        role: 'COACH',
+        memberships: [{ role: 'COACH' }],
       });
 
       const request = new Request('http://localhost:3000/api/test', {

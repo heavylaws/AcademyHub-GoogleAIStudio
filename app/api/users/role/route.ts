@@ -24,7 +24,7 @@ export async function GET(request: Request) {
         id: true,
         email: true,
         displayName: true,
-        role: true,
+        memberships: { select: { role: true }, take: 1 },
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
         uid: entry.id,
         email: entry.email,
         displayName: entry.displayName,
-        role: String(entry.role).toLowerCase(),
+        role: entry.memberships[0]?.role ? String(entry.memberships[0].role).toLowerCase() : 'none',
       })),
     });
   } catch (error) {
@@ -66,18 +66,23 @@ export async function POST(request: Request) {
     const normalizedRole = role as keyof typeof roleMap;
     const existingUser = await prisma.user.findUnique({
       where: { id: uid },
-      select: { id: true, role: true },
+      select: { id: true, memberships: { select: { id: true, role: true }, take: 1 } },
     });
 
     if (!existingUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const demotingAdmin = existingUser.role === UserRole.ADMIN && normalizedRole !== 'admin';
+    const membership = existingUser.memberships[0];
+    if (!membership) {
+      return NextResponse.json({ error: 'User has no membership to update' }, { status: 400 });
+    }
+
+    const demotingAdmin = membership.role === UserRole.ADMIN && normalizedRole !== 'admin';
 
     if (demotingAdmin) {
       await prisma.$transaction(async (tx) => {
-        const adminCount = await tx.user.count({
+        const adminCount = await tx.membership.count({
           where: { role: UserRole.ADMIN },
         });
 
@@ -85,8 +90,8 @@ export async function POST(request: Request) {
           throw new AuthError('Cannot remove the last remaining admin.', 409);
         }
 
-        await tx.user.update({
-          where: { id: uid },
+        await tx.membership.update({
+          where: { id: membership.id },
           data: { role: roleMap[normalizedRole] },
         });
       });
@@ -94,8 +99,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, role: normalizedRole });
     }
 
-    await prisma.user.update({
-      where: { id: uid },
+    await prisma.membership.update({
+      where: { id: membership.id },
       data: { role: roleMap[normalizedRole] },
     });
 

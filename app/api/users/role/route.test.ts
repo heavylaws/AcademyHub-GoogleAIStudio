@@ -7,8 +7,8 @@ const mockVerifyRequestAuth = vi.fn();
 const mockRequireRole = vi.fn();
 const mockFindMany = vi.fn();
 const mockFindUnique = vi.fn();
-const mockUserUpdate = vi.fn();
-const mockUserCount = vi.fn();
+const mockMembershipUpdate = vi.fn();
+const mockMembershipCount = vi.fn();
 const mockTransaction = vi.fn();
 
 vi.mock('@/lib/auth/verifyRequestAuth', () => ({
@@ -24,8 +24,10 @@ vi.mock('@/lib/prisma', () => ({
     user: {
       findMany: (...args: unknown[]) => mockFindMany(...args),
       findUnique: (...args: unknown[]) => mockFindUnique(...args),
-      update: (...args: unknown[]) => mockUserUpdate(...args),
-      count: (...args: unknown[]) => mockUserCount(...args),
+    },
+    membership: {
+      update: (...args: unknown[]) => mockMembershipUpdate(...args),
+      count: (...args: unknown[]) => mockMembershipCount(...args),
     },
     $transaction: (...args: unknown[]) => mockTransaction(...args),
   },
@@ -50,7 +52,7 @@ describe('/api/users/role authorization rules', () => {
     mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'admin_1', role: 'admin' });
     mockRequireRole.mockReturnValueOnce(undefined);
     mockFindMany.mockResolvedValueOnce([
-      { id: 'user_1', email: 'admin@example.com', displayName: 'Admin', role: 'ADMIN' },
+      { id: 'user_1', email: 'admin@example.com', displayName: 'Admin', memberships: [{ role: 'ADMIN' }] },
     ]);
 
     const response = await GET(new NextRequest('http://localhost/api/users/role'));
@@ -71,18 +73,18 @@ describe('/api/users/role authorization rules', () => {
     );
 
     expect(response.status).toBe(400);
-    expect(mockUserUpdate).not.toHaveBeenCalled();
+    expect(mockMembershipUpdate).not.toHaveBeenCalled();
   });
 
   it('rejects demoting the last admin', async () => {
     mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'admin_1', role: 'admin' });
     mockRequireRole.mockReturnValueOnce(undefined);
-    mockFindUnique.mockResolvedValueOnce({ id: 'admin_1', role: 'ADMIN' });
+    mockFindUnique.mockResolvedValueOnce({ id: 'admin_1', memberships: [{ id: 'mem_1', role: 'ADMIN' }] });
     mockTransaction.mockImplementationOnce(async (callback) => {
       const tx = {
-        user: {
+        membership: {
           count: async () => 1,
-          update: mockUserUpdate,
+          update: mockMembershipUpdate,
         },
       };
 
@@ -97,24 +99,24 @@ describe('/api/users/role authorization rules', () => {
     );
 
     expect(response.status).toBe(409);
-    expect(mockUserUpdate).not.toHaveBeenCalled();
+    expect(mockMembershipUpdate).not.toHaveBeenCalled();
   });
 
   it('allows demoting one of two admins', async () => {
     mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'admin_1', role: 'admin' });
     mockRequireRole.mockReturnValueOnce(undefined);
-    mockFindUnique.mockResolvedValueOnce({ id: 'admin_1', role: 'ADMIN' });
+    mockFindUnique.mockResolvedValueOnce({ id: 'admin_1', memberships: [{ id: 'mem_1', role: 'ADMIN' }] });
     mockTransaction.mockImplementationOnce(async (callback) => {
       const tx = {
-        user: {
+        membership: {
           count: async () => 2,
-          update: mockUserUpdate,
+          update: mockMembershipUpdate,
         },
       };
 
       await callback(tx);
     });
-    mockUserUpdate.mockResolvedValueOnce({ id: 'admin_1', role: 'PARENT' });
+    mockMembershipUpdate.mockResolvedValueOnce({ id: 'mem_1', role: 'PARENT' });
 
     const response = await POST(
       new NextRequest('http://localhost/api/users/role', {
@@ -124,24 +126,24 @@ describe('/api/users/role authorization rules', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockUserUpdate).toHaveBeenCalledOnce();
+    expect(mockMembershipUpdate).toHaveBeenCalledOnce();
   });
 
   it('allows an admin to self-demote when another admin remains', async () => {
     mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'admin_1', role: 'admin' });
     mockRequireRole.mockReturnValueOnce(undefined);
-    mockFindUnique.mockResolvedValueOnce({ id: 'admin_1', role: 'ADMIN' });
+    mockFindUnique.mockResolvedValueOnce({ id: 'admin_1', memberships: [{ id: 'mem_1', role: 'ADMIN' }] });
     mockTransaction.mockImplementationOnce(async (callback) => {
       const tx = {
-        user: {
+        membership: {
           count: async () => 2,
-          update: mockUserUpdate,
+          update: mockMembershipUpdate,
         },
       };
 
       await callback(tx);
     });
-    mockUserUpdate.mockResolvedValueOnce({ id: 'admin_1', role: 'PARENT' });
+    mockMembershipUpdate.mockResolvedValueOnce({ id: 'mem_1', role: 'PARENT' });
 
     const response = await POST(
       new NextRequest('http://localhost/api/users/role', {
@@ -151,6 +153,6 @@ describe('/api/users/role authorization rules', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockUserUpdate).toHaveBeenCalledOnce();
+    expect(mockMembershipUpdate).toHaveBeenCalledOnce();
   });
 });

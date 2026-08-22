@@ -20,7 +20,10 @@ export async function verifyRequestAuth(request: Request): Promise<AuthUser> {
       select: {
         id: true,
         email: true,
-        role: true,
+        memberships: {
+          select: { role: true },
+          take: 1,
+        },
       },
     });
 
@@ -28,7 +31,7 @@ export async function verifyRequestAuth(request: Request): Promise<AuthUser> {
       throw new AuthError('Authenticated user was not found', 401);
     }
 
-    const role = user.role.toLowerCase();
+    const role = user.memberships[0]?.role?.toLowerCase();
 
     return {
       uid: user.id,

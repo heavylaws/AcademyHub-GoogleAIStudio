@@ -84,9 +84,11 @@ export async function createAssessment(
   input: PersistedAssessment,
   coachUserId: string
 ): Promise<Assessment> {
+  const firstAcademy = await prisma.academy.findFirst();
   const record = await prisma.assessment.create({
     data: {
       ...(input.id ? { id: input.id } : {}),
+      academyId: firstAcademy?.id || 'dummy_id',
       athleteId: input.athlete_id,
       athleteName: input.athlete_name,
       parentEmail: input.parent_email,
@@ -109,5 +111,5 @@ export async function createAssessment(
     },
     include: assessmentInclude,
   });
-  return toAssessment(record);
+  return toAssessment(record as AssessmentWithRelations);
 }

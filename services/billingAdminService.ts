@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { toNumber } from '@/lib/money';
-import { Prisma } from '@prisma/client';
+import { Prisma, InstallmentStatus } from '@prisma/client';
 import {
   ChildRegistration,
   CreateInvoiceInput,
@@ -36,6 +36,16 @@ const paymentStatusFromPrisma = {
   OVERDUE: 'overdue',
 } as const;
 
+const installmentStatusToPrisma: Record<string, InstallmentStatus> = {
+  'Due Now': 'DUE_NOW',
+  'Scheduled': 'SCHEDULED',
+};
+
+const installmentStatusFromPrisma: Record<InstallmentStatus, string> = {
+  DUE_NOW: 'Due Now',
+  SCHEDULED: 'Scheduled',
+};
+
 function toFamilyInvoice(invoice: InvoiceWithRelations): FamilyInvoice {
   return {
     id: invoice.id,
@@ -55,7 +65,7 @@ function toFamilyInvoice(invoice: InvoiceWithRelations): FamilyInvoice {
       label: installment.label,
       amount: toNumber(installment.amount),
       dueDate: installment.dueDate,
-      status: installment.status,
+      status: installmentStatusFromPrisma[installment.status] || installment.status,
     })),
     payment_status: paymentStatusFromPrisma[invoice.paymentStatus],
     issuedDate: invoice.issuedDate,
@@ -92,8 +102,10 @@ export async function getInvoiceByIdAdmin(invoiceId: string): Promise<FamilyInvo
 export async function createInvoiceAdmin(
   input: CreateInvoiceInput & { parentUserId: string }
 ): Promise<FamilyInvoice> {
+  const firstAcademy = await prisma.academy.findFirst();
   const invoice = await prisma.invoice.create({
     data: {
+      academyId: firstAcademy?.id || 'dummy_id',
       parentUserId: input.parentUserId,
       parentName: input.parentName,
       parentEmail: input.parentEmail,
@@ -116,13 +128,13 @@ export async function createInvoiceAdmin(
           label: installment.label,
           amount: installment.amount,
           dueDate: installment.dueDate,
-          status: installment.status,
+          status: installmentStatusToPrisma[installment.status] || 'DUE_NOW',
         })),
       },
     },
     include: invoiceInclude,
   });
-  return toFamilyInvoice(invoice);
+  return toFamilyInvoice(invoice as InvoiceWithRelations);
 }
 
 export async function updateInvoiceAdmin(
@@ -153,7 +165,11 @@ export async function updateInvoiceAdmin(
     if (installmentBreakdown) {
       await transaction.installment.deleteMany({ where: { invoiceId } });
       await transaction.installment.createMany({
-        data: installmentBreakdown.map((installment) => ({ invoiceId, ...installment })),
+        data: installmentBreakdown.map((installment) => ({
+          invoiceId,
+          ...installment,
+          status: installmentStatusToPrisma[installment.status] || 'DUE_NOW',
+        })),
       });
     }
   });

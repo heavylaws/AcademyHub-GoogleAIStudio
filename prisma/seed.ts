@@ -11,25 +11,45 @@ async function main() {
 
   const user = await prisma.user.findUnique({
     where: { email: targetEmail },
-    select: { id: true, email: true, role: true },
+    select: { id: true, email: true },
   });
 
   if (!user) {
-    throw new Error(`No existing user found for ADMIN_BOOTSTRAP_EMAIL=${targetEmail}`);
-  }
-
-  if (user.role === UserRole.ADMIN) {
-    console.log(`User ${user.email} is already ADMIN; no changes made.`);
+    console.error(`No existing user found for ADMIN_BOOTSTRAP_EMAIL=${targetEmail}`);
+    process.exitCode = 1;
     return;
   }
 
-  const updatedUser = await prisma.user.update({
-    where: { id: user.id },
-    data: { role: UserRole.ADMIN },
-    select: { id: true, email: true, role: true },
+  const academyName = process.env.DEFAULT_ACADEMY_NAME || 'AcademyHub Global';
+  const academySlug = process.env.DEFAULT_ACADEMY_SLUG || 'global';
+
+  const academy = await prisma.academy.upsert({
+    where: { slug: academySlug },
+    update: {},
+    create: {
+      name: academyName,
+      slug: academySlug,
+    },
   });
 
-  console.log(`Promoted ${updatedUser.email} to role ${updatedUser.role}.`);
+  const membership = await prisma.membership.upsert({
+    where: {
+      userId_academyId: {
+        userId: user.id,
+        academyId: academy.id,
+      },
+    },
+    update: {
+      role: UserRole.ADMIN,
+    },
+    create: {
+      userId: user.id,
+      academyId: academy.id,
+      role: UserRole.ADMIN,
+    },
+  });
+
+  console.log(`Promoted ${user.email} to role ${membership.role} in academy ${academy.slug}.`);
 }
 
 main()

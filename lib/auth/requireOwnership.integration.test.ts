@@ -16,16 +16,30 @@ const coachUser: AuthUser = { uid: coachId, role: 'coach', claims: { role: 'coac
 
 describe('requireOwnership assessment live Postgres join', () => {
   it('resolves ownership through Assessment.athlete.parentUserId', async () => {
+    const academy = await prisma.academy.create({
+      data: { name: 'Test Academy', slug: `test_academy_${suffix}` },
+    });
+    const academyId = academy.id;
+
     await prisma.user.createMany({
       data: [
-        { id: parentId, email: `${parentId}@example.com`, displayName: 'Test Parent', role: 'PARENT' },
-        { id: otherParentId, email: `${otherParentId}@example.com`, displayName: 'Other Test Parent', role: 'PARENT' },
-        { id: coachId, email: `${coachId}@example.com`, displayName: 'Test Coach', role: 'COACH' },
+        { id: parentId, email: `${parentId}@example.com`, displayName: 'Test Parent' },
+        { id: otherParentId, email: `${otherParentId}@example.com`, displayName: 'Other Test Parent' },
+        { id: coachId, email: `${coachId}@example.com`, displayName: 'Test Coach' },
+      ],
+    });
+
+    await prisma.membership.createMany({
+      data: [
+        { userId: parentId, academyId, role: 'PARENT' },
+        { userId: otherParentId, academyId, role: 'PARENT' },
+        { userId: coachId, academyId, role: 'COACH' },
       ],
     });
     await prisma.athlete.create({
       data: {
         id: athleteId,
+        academyId,
         name: 'Phase 3.3 Test Athlete',
         parentUserId: parentId,
         parentEmail: `${parentId}@example.com`,
@@ -35,6 +49,7 @@ describe('requireOwnership assessment live Postgres join', () => {
     await prisma.assessment.create({
       data: {
         id: assessmentId,
+        academyId,
         athleteId,
         athleteName: 'Phase 3.3 Test Athlete',
         sport: 'Test',
@@ -56,6 +71,7 @@ describe('requireOwnership assessment live Postgres join', () => {
     await prisma.assessment.deleteMany({ where: { id: assessmentId } });
     await prisma.athlete.deleteMany({ where: { id: athleteId } });
     await prisma.user.deleteMany({ where: { id: { in: [parentId, otherParentId, coachId] } } });
+    await prisma.academy.deleteMany({ where: { slug: `test_academy_${suffix}` } });
     await prisma.$disconnect();
   });
 });

@@ -119,8 +119,10 @@ export async function POST(request: Request) {
       }
     }
 
+    const firstAcademy = await prisma.academy.findFirst();
     const athlete = await prisma.athlete.create({
       data: {
+        academyId: firstAcademy?.id || 'dummy_id',
         name: input.name.trim(),
         dob: input.dob || null,
         parentUserId: input.parentUserId,
@@ -135,7 +137,10 @@ export async function POST(request: Request) {
           })),
         },
       },
-      include: athleteInclude,
+      include: {
+        parent: { select: { displayName: true } },
+        sports: { select: { sport: true }, orderBy: { createdAt: 'asc' } },
+      },
     });
 
     return NextResponse.json({ athlete: toAthleteRecord(athlete) }, { status: 201 });

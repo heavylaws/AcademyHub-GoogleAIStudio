@@ -23,6 +23,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     athlete: { findMany: (args: unknown) => mockFindMany(args), create: (args: unknown) => mockCreate(args) },
     user: { findUnique: (args: unknown) => mockFindUser(args) },
+    academy: { findFirst: vi.fn().mockResolvedValue({ id: 'dummy_academy' }) },
   },
 }));
 
