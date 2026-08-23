@@ -6,11 +6,10 @@ This document lists open issues, architectural limitations, and known bugs in Ac
 
 ## High Severity
 
-### 1. `gemini-3.6-flash` Model Identifier Unverified in Live Environment
-- **Date Recorded**: 2026-08-23
-- **Description**: `GEMINI_API_KEY` is not configured in the local development/test environment. In Phase E, the model string was consolidated into `DEFAULT_AI_MODEL = 'gemini-3.6-flash'` in `lib/env.ts` with optional `AI_MODEL` env override support. In Phase F, lightweight non-blocking startup validation was added to `instrumentation.ts` to log loud console errors at boot if the model fails. However, live API invocation remains unverified due to missing API key in the environment.
-- **Impact**: AI features return HTTP 503 or fallback to deterministic scores with `pipeline_status: 'ai_error'`.
-- **Remediation**: Execute a live test call with a valid `GEMINI_API_KEY` or set `AI_MODEL` env override if model string changes.
+### 1. [RESOLVED] `gemini-3.6-flash` Model Identifier Live Verification
+- **Date Resolved**: 2026-08-23
+- **Resolution**: `gemini-3.6-flash` was confirmed valid via a live API execution using `@google/genai ^2.4.0` with `GEMINI_API_KEY`, returning: `VALID: Pong! 🏓 How can I help you today?`. Model identifier consolidated into `DEFAULT_AI_MODEL` in `lib/env.ts` with non-blocking startup validation in `instrumentation.ts`.
+- **Historical Context**: The identifier remained unverified through Phases B-F due to missing local API keys, with routes degrading gracefully to deterministic scoring.
 
 ### 2. Multi-Membership Users Hard-Blocked at Authentication
 - **Description**: `verifyRequestAuth` queries `Membership` records for a user. If a user belongs to more than 1 academy, `verifyRequestAuth` throws an `AuthError(403)` stating multi-academy access is not yet implemented.

@@ -84,8 +84,8 @@ export async function GET(request: Request) {
   try {
     const athletes = await prisma.athlete.findMany({
       where: user.role === 'parent'
-        ? { academyId: user.academyId, parentUserId: user.uid }
-        : { academyId: user.academyId },
+        ? { academyId: user.academyId, parentUserId: user.uid, deletedAt: null }
+        : { academyId: user.academyId, deletedAt: null },
       include: athleteInclude,
       orderBy: { createdAt: 'desc' },
     });

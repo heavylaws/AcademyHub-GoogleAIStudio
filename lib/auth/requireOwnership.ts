@@ -39,8 +39,11 @@ export async function requireOwnership(
     if (resourceType === 'athlete') {
       const athlete = await prisma.athlete.findUnique({
         where: { id: resourceId },
-        select: { academyId: true, parentUserId: true },
+        select: { academyId: true, parentUserId: true, deletedAt: true },
       });
+      if (athlete?.deletedAt !== null && athlete?.deletedAt !== undefined) {
+        throw new AuthError('Resource not found', 404);
+      }
       resourceAcademyId = athlete?.academyId;
       parentUserId = athlete?.parentUserId;
     } else if (resourceType === 'invoice') {
@@ -53,8 +56,18 @@ export async function requireOwnership(
     } else if (resourceType === 'assessment') {
       const assessment = await prisma.assessment.findUnique({
         where: { id: resourceId },
-        select: { academyId: true, athlete: { select: { parentUserId: true } } },
+        select: {
+          academyId: true,
+          deletedAt: true,
+          athlete: { select: { parentUserId: true, deletedAt: true } },
+        },
       });
+      if (
+        (assessment?.deletedAt !== null && assessment?.deletedAt !== undefined) ||
+        (assessment?.athlete?.deletedAt !== null && assessment?.athlete?.deletedAt !== undefined)
+      ) {
+        throw new AuthError('Resource not found', 404);
+      }
       resourceAcademyId = assessment?.academyId;
       parentUserId = assessment?.athlete?.parentUserId;
     } else {

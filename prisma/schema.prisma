@@ -193,6 +193,7 @@ model Athlete {
   /// Neutral guardian consent naming for Gulf/Middle East region compliance (renamed from coppaConsent)
   guardianConsent     Boolean  @default(false) @map("guardian_consent")
   guardianConsentDate String?  @map("guardian_consent_date")
+  deletedAt           DateTime? @map("deleted_at")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
@@ -204,6 +205,7 @@ model Athlete {
   invoiceChildren InvoiceChild[]
 
   @@index([academyId])
+  @@index([academyId, deletedAt])
   @@index([academyId, parentUserId])
   @@index([parentUserId])
   @@map("athletes")
@@ -245,6 +247,7 @@ model Assessment {
   agentInsights           Json?           @map("agent_insights")
   computedScore           Float           @map("computed_score")
   rubricGrade             String?         @map("rubric_grade")
+  deletedAt               DateTime?       @map("deleted_at")
   createdAt               DateTime        @default(now()) @map("created_at")
   updatedAt               DateTime        @updatedAt @map("updated_at")
 
@@ -254,6 +257,7 @@ model Assessment {
   coach   User?   @relation("CoachAssessments", fields: [coachId], references: [id], onDelete: SetNull)
 
   @@index([academyId])
+  @@index([academyId, deletedAt])
   @@index([academyId, athleteId])
   @@index([athleteId])
   @@index([coachId])

@@ -249,7 +249,7 @@ describe('Authorization middleware', () => {
       await expect(requireOwnership(parentUser, 'athlete', 'ath_8042')).resolves.not.toThrow();
       expect(mockAthleteFindUnique).toHaveBeenCalledWith({
         where: { id: 'ath_8042' },
-        select: { academyId: true, parentUserId: true },
+        select: { academyId: true, parentUserId: true, deletedAt: true },
       });
     });
 
@@ -289,7 +289,11 @@ describe('Authorization middleware', () => {
       await expect(requireOwnership(parentUser, 'assessment', 'asm_8042')).resolves.not.toThrow();
       expect(mockAssessmentFindUnique).toHaveBeenCalledWith({
         where: { id: 'asm_8042' },
-        select: { academyId: true, athlete: { select: { parentUserId: true } } },
+        select: {
+          academyId: true,
+          deletedAt: true,
+          athlete: { select: { parentUserId: true, deletedAt: true } },
+        },
       });
     });
 
