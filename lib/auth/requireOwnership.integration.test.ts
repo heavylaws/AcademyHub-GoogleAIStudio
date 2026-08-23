@@ -106,6 +106,28 @@ describe('requireOwnership assessment live Postgres join', () => {
     await prisma.academy.delete({ where: { id: academyB.id } });
   });
 
+  it('returns 404 for soft-deleted athlete or assessment', async () => {
+    const softDeletedAthId = `${suffix}_soft_ath`;
+    await prisma.athlete.create({
+      data: {
+        id: softDeletedAthId,
+        academyId: parentUser.academyId!,
+        name: 'Soft Deleted Athlete',
+        parentUserId: parentId,
+        parentEmail: `${parentId}@example.com`,
+        guardianConsent: true,
+        deletedAt: new Date(),
+      },
+    });
+
+    await expect(requireOwnership(parentUser, 'athlete', softDeletedAthId)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Resource not found',
+    });
+
+    await prisma.athlete.delete({ where: { id: softDeletedAthId } });
+  });
+
   afterAll(async () => {
     await prisma.assessment.deleteMany({ where: { id: assessmentId } });
     await prisma.athlete.deleteMany({ where: { id: athleteId } });

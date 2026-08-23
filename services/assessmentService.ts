@@ -69,8 +69,8 @@ function toAssessment(record: AssessmentWithRelations): Assessment {
 export async function listAssessmentsForUser(userId: string, academyId: string, role?: string): Promise<Assessment[]> {
   const records = await prisma.assessment.findMany({
     where: role === 'parent'
-      ? { academyId, athlete: { parentUserId: userId } }
-      : { academyId },
+      ? { academyId, deletedAt: null, athlete: { parentUserId: userId, deletedAt: null } }
+      : { academyId, deletedAt: null, athlete: { deletedAt: null } },
     include: assessmentInclude,
     orderBy: { createdAt: 'desc' },
   });
@@ -78,8 +78,17 @@ export async function listAssessmentsForUser(userId: string, academyId: string, 
 }
 
 export async function getAssessmentById(id: string): Promise<Assessment | null> {
-  const record = await prisma.assessment.findUnique({ where: { id }, include: assessmentInclude });
-  return record ? toAssessment(record) : null;
+  const record = await prisma.assessment.findUnique({
+    where: { id },
+    include: {
+      athlete: { select: { parentEmail: true, deletedAt: true } },
+      coach: { select: { displayName: true } },
+    },
+  });
+  if (!record || record.deletedAt || record.athlete?.deletedAt) {
+    return null;
+  }
+  return toAssessment(record);
 }
 
 export async function createAssessment(

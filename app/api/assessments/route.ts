@@ -56,9 +56,9 @@ export async function POST(request: Request) {
 
     const athlete = await prisma.athlete.findUnique({
       where: { id: input.athlete_id },
-      select: { id: true, academyId: true },
+      select: { id: true, academyId: true, deletedAt: true },
     });
-    if (!athlete || athlete.academyId !== user.academyId) {
+    if (!athlete || athlete.deletedAt !== null || athlete.academyId !== user.academyId) {
       return NextResponse.json({ error: 'Athlete not found' }, { status: 400 });
     }
 

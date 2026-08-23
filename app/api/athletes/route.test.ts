@@ -36,7 +36,7 @@ describe('/api/athletes collection routes', () => {
     const response = await GET(new NextRequest('http://localhost/api/athletes'));
 
     expect(response.status).toBe(200);
-    expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: { academyId: 'acad_1', parentUserId: 'parent_1' } }));
+    expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: { academyId: 'acad_1', parentUserId: 'parent_1', deletedAt: null } }));
   });
 
   it('fails closed with 403 if !user.academyId on GET', async () => {
