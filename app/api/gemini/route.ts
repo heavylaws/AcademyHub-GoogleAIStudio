@@ -6,6 +6,8 @@ import { AuthError } from '@/lib/auth/types';
 import { checkAndRecordAiUsage, AiRateLimitError } from '@/lib/auth/rateLimitAi';
 import { sanitizeAndDelimitInput, PromptValidationError } from '@/lib/ai/promptSanitizer';
 
+import { appEnv } from '@/lib/env';
+
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
@@ -74,7 +76,7 @@ ${sanitizedPrompt.delimited}
 Provide concise, precise, actionable biomechanical analysis, training drills, or safety recommendations (150-250 words max).`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+      model: appEnv.aiModel,
       contents: fullPrompt,
     });
 
@@ -86,7 +88,7 @@ Provide concise, precise, actionable biomechanical analysis, training drills, or
     if (err instanceof AiRateLimitError) {
       return NextResponse.json({ error: err.message }, { status: 429 });
     }
-    console.error('Gemini API Error [model: gemini-3.6-flash, route: /api/gemini]:', err);
+    console.error(`Gemini API Error [model: ${appEnv.aiModel}, route: /api/gemini]:`, err);
     return NextResponse.json(
       { error: err.message || 'Failed to generate AI insights' },
       { status: 500 }

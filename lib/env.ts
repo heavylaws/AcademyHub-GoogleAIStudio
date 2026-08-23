@@ -61,6 +61,8 @@ export function assertProductionEnvironment(): void {
   }
 }
 
+export const DEFAULT_AI_MODEL = 'gemini-3.6-flash';
+
 export const appEnv = {
   get appUrl() {
     return readEnv('APP_URL', 'http://localhost:3000');
@@ -76,6 +78,9 @@ export const appEnv = {
   },
   get geminiApiKey() {
     return readEnv('GEMINI_API_KEY', '');
+  },
+  get aiModel() {
+    return readEnv('AI_MODEL', DEFAULT_AI_MODEL);
   },
   get aiPipelineEnabled() {
     return readEnv('NEXT_PUBLIC_ENABLE_AI_PIPELINE', 'false') === 'true';

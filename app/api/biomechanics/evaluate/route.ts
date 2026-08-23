@@ -10,6 +10,7 @@ import { requireRole } from '@/lib/auth/requireRole';
 import { AuthError } from '@/lib/auth/types';
 import { checkAndRecordAiUsage, AiRateLimitError } from '@/lib/auth/rateLimitAi';
 import { sanitizeAndDelimitInput, PromptValidationError } from '@/lib/ai/promptSanitizer';
+import { appEnv } from '@/lib/env';
 
 export const dynamic = 'force-dynamic';
 
@@ -179,7 +180,7 @@ Input Assessment Data:
 Provide an objective assessment score (0-100), letter grade ('A', 'B', 'C', 'D'), synthesis of notes, and detailed agent insights.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: appEnv.aiModel,
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -288,7 +289,7 @@ Provide an objective assessment score (0-100), letter grade ('A', 'B', 'C', 'D')
     } catch (aiError: any) {
       // Gemini call failed or returned malformed JSON — log observable error and return deterministic score with error detail (HTTP 200)
       console.error(
-        'Gemini AI evaluation failed [model: gemini-3.6-flash, route: /api/biomechanics/evaluate]:',
+        `Gemini AI evaluation failed [model: ${appEnv.aiModel}, route: /api/biomechanics/evaluate]:`,
         aiError
       );
       return NextResponse.json({
