@@ -21,6 +21,21 @@ vi.mock('@/lib/auth/requireRole', () => ({
   requireRole: (user: any, allowedRoles: any) => mockRequireRole(user, allowedRoles),
 }));
 
+const mockAthleteFindUnique = vi.fn();
+const mockCreateAssessment = vi.fn();
+
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    athlete: {
+      findUnique: (args: any) => mockAthleteFindUnique(args),
+    },
+  },
+}));
+
+vi.mock('@/services/assessmentService', () => ({
+  createAssessment: (input: any, uid: string, academyId: string) => mockCreateAssessment(input, uid, academyId),
+}));
+
 vi.mock('@/lib/auth/rateLimitAi', () => ({
   checkAndRecordAiUsage: (...args: any[]) => mockCheckAndRecordAiUsage(...args),
   AiRateLimitError: class extends Error {
@@ -61,6 +76,16 @@ describe('POST /api/biomechanics/evaluate', () => {
     mockVerifyRequestAuth.mockResolvedValue({ uid: 'coach_001', role: 'coach', academyId: 'acad_1' });
     mockRequireRole.mockReturnValue(undefined);
     mockCheckAndRecordAiUsage.mockResolvedValue(undefined);
+    mockAthleteFindUnique.mockResolvedValue({
+      id: 'ath_8042',
+      academyId: 'acad_1',
+      deletedAt: null,
+      name: 'Marcus Vance',
+      parentEmail: 'robert.vance@gmail.com',
+    });
+    mockCreateAssessment.mockImplementation((input: any) =>
+      Promise.resolve({ ...input, id: input.id || 'asm_mock_123' })
+    );
   });
 
   afterEach(() => {
@@ -271,6 +296,22 @@ describe('POST /api/biomechanics/evaluate', () => {
       const json = await res.json();
       expect(json.error).toBe('Forbidden: User does not belong to an academy');
       expect(mockCheckAndRecordAiUsage).not.toHaveBeenCalled();
+    });
+
+    it('rejects evaluation for athlete in another academy or soft-deleted with 400', async () => {
+      mockAthleteFindUnique.mockResolvedValueOnce(null);
+
+      const req = new NextRequest('http://localhost:3000/api/biomechanics/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(samplePayload),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe('Athlete not found');
+      expect(mockCreateAssessment).not.toHaveBeenCalled();
     });
 
     it('rejects oversized field (>1000 chars) with status 400', async () => {

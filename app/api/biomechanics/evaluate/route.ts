@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import {
   calculateComputedScore,
   deriveRubricGrade,
@@ -11,6 +12,7 @@ import { AuthError } from '@/lib/auth/types';
 import { checkAndRecordAiUsage, AiRateLimitError } from '@/lib/auth/rateLimitAi';
 import { sanitizeAndDelimitInput, PromptValidationError } from '@/lib/ai/promptSanitizer';
 import { appEnv } from '@/lib/env';
+import { createAssessment } from '@/services/assessmentService';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +28,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
   }
 
-  // Pre-check academy membership before rate limiting call
   if (!user.academyId) {
     return NextResponse.json(
       { error: 'Forbidden: User does not belong to an academy' },
@@ -37,9 +38,27 @@ export async function POST(req: NextRequest) {
   try {
     const input: CreateAssessmentInput & { id?: string } = await req.json();
 
+    if (!input.athlete_id) {
+      return NextResponse.json({ error: 'athlete_id is required' }, { status: 400 });
+    }
+
+    // 0. Validate target athlete exists, belongs to caller's academy, and is not soft-deleted
+    const athlete = await prisma.athlete.findUnique({
+      where: { id: input.athlete_id },
+      select: { id: true, academyId: true, deletedAt: true, name: true, parentEmail: true },
+    });
+
+    if (!athlete || athlete.deletedAt !== null || athlete.academyId !== user.academyId) {
+      return NextResponse.json({ error: 'Athlete not found' }, { status: 400 });
+    }
+
+    // Use canonical athlete name and parent email if not explicitly provided
+    const athleteName = input.athlete_name || athlete.name;
+    const parentEmail = input.parent_email || athlete.parentEmail;
+
     // Validate input length caps & sanitize delimiter tags
     const sanitizedAthleteName = sanitizeAndDelimitInput(
-      input.athlete_name,
+      athleteName,
       'athlete_name',
       'athlete_name',
       100
@@ -110,19 +129,19 @@ export async function POST(req: NextRequest) {
     );
     const baseRubricGrade = deriveRubricGrade(baseComputedScore);
 
-    // If no Gemini API key configured, return deterministic score only — no fake AI insights
+    // If no Gemini API key configured, persist deterministic fallback score directly
     if (!apiKey) {
-      return NextResponse.json({
-        assessment: {
-          id: input.id || `asm_det_${Date.now()}`,
+      const persistedFallback = await createAssessment(
+        {
+          id: input.id,
           athlete_id: input.athlete_id,
-          athlete_name: input.athlete_name,
-          parent_email: input.parent_email,
+          athlete_name: athleteName,
+          parent_email: parentEmail,
           sport: input.sport,
           exercise_type: input.exercise_type,
           grading_rubric_sop: input.grading_rubric_sop || `${input.sport} - ${input.exercise_type} SOP`,
-          coach_id: input.coach_id || 'coach_manual_entry',
-          coach_name: input.coach_name || 'Coach',
+          coach_id: user.uid,
+          coach_name: input.coach_name || user.email?.split('@')[0] || 'Coach',
           data_source: 'manual',
           pipeline_status: 'deterministic_fallback',
           quantitative_metrics: quantitative,
@@ -135,9 +154,12 @@ export async function POST(req: NextRequest) {
           },
           computed_score: baseComputedScore,
           rubric_grade: baseRubricGrade,
-          created_at: new Date().toISOString(),
         },
-      });
+        user.uid,
+        user.academyId
+      );
+
+      return NextResponse.json({ assessment: persistedFallback });
     }
 
     // 2. Check and record AI usage before model call (recorded even if model call fails)
@@ -245,64 +267,69 @@ Provide an objective assessment score (0-100), letter grade ('A', 'B', 'C', 'D')
 
       const finalGrade = parsed.rubric_grade || deriveRubricGrade(finalScore);
 
-      const evaluatedAssessment = {
-        id: input.id || `asm_ai_${Date.now()}`,
-        athlete_id: input.athlete_id,
-        athlete_name: input.athlete_name,
-        parent_email: input.parent_email,
-        sport: input.sport,
-        exercise_type: input.exercise_type,
-        grading_rubric_sop: input.grading_rubric_sop || `${input.sport} - ${input.exercise_type} SOP`,
-        coach_id: input.coach_id || 'coach_gemini_agent',
-        coach_name: input.coach_name || 'Coach',
-        data_source: 'ai_agentic',
-        pipeline_status: 'ai_evaluated',
-        quantitative_metrics: quantitative,
-        qualitative_observations: {
-          form_quality_score: qualitative.form_quality_score,
-          endurance_score: qualitative.endurance_score,
-          fault_tags: parsed.faultDiagnostics && parsed.faultDiagnostics.length > 0
-            ? parsed.faultDiagnostics
-            : qualitative.fault_tags,
-          coach_notes: parsed.enhanced_coach_notes || qualitative.coach_notes,
-        },
-        media_references: {
-          video_storage_path: input.media_references?.video_storage_path,
-          smart_grid_processed: true,
-          thumbnail_url: input.media_references?.thumbnail_url,
-          keypoints_json_path: input.media_references?.keypoints_json_path,
-        },
-        computed_score: finalScore,
-        rubric_grade: finalGrade,
-        created_at: new Date().toISOString(),
-        agent_insights: {
-          kinematicAnalysis: parsed.kinematicAnalysis || 'Kinematics assessed through multi-agent pipeline.',
-          fatigueAnalysis: parsed.fatigueAnalysis || 'Neuromuscular pacing evaluated.',
-          faultDiagnostics: parsed.faultDiagnostics || qualitative.fault_tags,
-          prescriptiveDrills: parsed.prescriptiveDrills || ['Maintain standard movement progression'],
-          confidenceScore: typeof parsed.confidenceScore === 'number' ? parsed.confidenceScore : 0.95,
-          processingPipeline: 'gemini_multi_agent',
-        },
+      const agentInsights = {
+        kinematicAnalysis: parsed.kinematicAnalysis || 'Kinematics assessed through multi-agent pipeline.',
+        fatigueAnalysis: parsed.fatigueAnalysis || 'Neuromuscular pacing evaluated.',
+        faultDiagnostics: parsed.faultDiagnostics || qualitative.fault_tags,
+        prescriptiveDrills: parsed.prescriptiveDrills || ['Maintain standard movement progression'],
+        confidenceScore: typeof parsed.confidenceScore === 'number' ? parsed.confidenceScore : 0.95,
+        processingPipeline: 'gemini_multi_agent',
       };
 
-      return NextResponse.json({ assessment: evaluatedAssessment });
+      const persistedAssessment = await createAssessment(
+        {
+          id: input.id,
+          athlete_id: input.athlete_id,
+          athlete_name: athleteName,
+          parent_email: parentEmail,
+          sport: input.sport,
+          exercise_type: input.exercise_type,
+          grading_rubric_sop: input.grading_rubric_sop || `${input.sport} - ${input.exercise_type} SOP`,
+          coach_id: user.uid,
+          coach_name: input.coach_name || user.email?.split('@')[0] || 'Coach',
+          data_source: 'ai_agentic',
+          pipeline_status: 'ai_evaluated',
+          quantitative_metrics: quantitative,
+          qualitative_observations: {
+            form_quality_score: qualitative.form_quality_score,
+            endurance_score: qualitative.endurance_score,
+            fault_tags: parsed.faultDiagnostics && parsed.faultDiagnostics.length > 0
+              ? parsed.faultDiagnostics
+              : qualitative.fault_tags,
+            coach_notes: parsed.enhanced_coach_notes || qualitative.coach_notes,
+          },
+          media_references: {
+            video_storage_path: input.media_references?.video_storage_path,
+            smart_grid_processed: true,
+            thumbnail_url: input.media_references?.thumbnail_url,
+            keypoints_json_path: input.media_references?.keypoints_json_path,
+          },
+          agent_insights: agentInsights,
+          computed_score: finalScore,
+          rubric_grade: finalGrade,
+        },
+        user.uid,
+        user.academyId
+      );
+
+      return NextResponse.json({ assessment: persistedAssessment });
     } catch (aiError: any) {
-      // Gemini call failed or returned malformed JSON — log observable error and return deterministic score with error detail (HTTP 200)
       console.error(
         `Gemini AI evaluation failed [model: ${appEnv.aiModel}, route: /api/biomechanics/evaluate]:`,
         aiError
       );
-      return NextResponse.json({
-        assessment: {
-          id: input.id || `asm_det_${Date.now()}`,
+
+      const persistedErrorFallback = await createAssessment(
+        {
+          id: input.id,
           athlete_id: input.athlete_id,
-          athlete_name: input.athlete_name,
-          parent_email: input.parent_email,
+          athlete_name: athleteName,
+          parent_email: parentEmail,
           sport: input.sport,
           exercise_type: input.exercise_type,
           grading_rubric_sop: input.grading_rubric_sop || `${input.sport} - ${input.exercise_type} SOP`,
-          coach_id: input.coach_id || 'coach_manual_entry',
-          coach_name: input.coach_name || 'Coach',
+          coach_id: user.uid,
+          coach_name: input.coach_name || user.email?.split('@')[0] || 'Coach',
           data_source: 'manual',
           pipeline_status: 'ai_error',
           error_detail: aiError.message || 'Gemini evaluation failed',
@@ -317,9 +344,12 @@ Provide an objective assessment score (0-100), letter grade ('A', 'B', 'C', 'D')
           },
           computed_score: baseComputedScore,
           rubric_grade: baseRubricGrade,
-          created_at: new Date().toISOString(),
         },
-      });
+        user.uid,
+        user.academyId
+      );
+
+      return NextResponse.json({ assessment: persistedErrorFallback });
     }
   } catch (error: any) {
     if (error instanceof PromptValidationError) {

@@ -61,7 +61,7 @@ describe('/api/assessments collection routes', () => {
   });
 
   it('validates the athlete before creating an assessment', async () => {
-    const coach = { uid: 'coach_1', email: 'coach@example.com', role: 'coach' };
+    const coach = { uid: 'coach_1', email: 'coach@example.com', role: 'coach', academyId: 'acad_1' };
     mockVerifyRequestAuth.mockResolvedValueOnce(coach);
     mockEnsureUserRecord.mockResolvedValueOnce(undefined);
     mockAthleteFindUnique.mockResolvedValueOnce(null);
@@ -72,6 +72,21 @@ describe('/api/assessments collection routes', () => {
     }));
 
     expect(response.status).toBe(400);
+    expect(mockCreateAssessment).not.toHaveBeenCalled();
+  });
+
+  it('rejects computed_score and data_source on manual creation with 400', async () => {
+    const coach = { uid: 'coach_1', email: 'coach@example.com', role: 'coach', academyId: 'acad_1' };
+    mockVerifyRequestAuth.mockResolvedValueOnce(coach);
+
+    const response = await POST(new NextRequest('http://localhost/api/assessments', {
+      method: 'POST',
+      body: JSON.stringify({ athlete_id: 'ath_1', computed_score: 95, data_source: 'ai_agentic' }),
+    }));
+
+    expect(response.status).toBe(400);
+    const json = await response.json();
+    expect(json.error).toContain('cannot be specified on manual assessment creation');
     expect(mockCreateAssessment).not.toHaveBeenCalled();
   });
 });
