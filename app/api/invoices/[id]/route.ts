@@ -3,6 +3,7 @@ import { verifyRequestAuth } from '@/lib/auth/verifyRequestAuth';
 import { requireOwnership } from '@/lib/auth/requireOwnership';
 import { requireRole } from '@/lib/auth/requireRole';
 import { AuthError } from '@/lib/auth/types';
+import { appEnv } from '@/lib/env';
 import {
   getInvoiceByIdAdmin,
   updateInvoiceAdmin,
@@ -29,6 +30,13 @@ export async function GET(request: Request, context: RouteContext) {
     return authFailure(err);
   }
 
+  if (!appEnv.billingEnabled) {
+    return NextResponse.json(
+      { error: 'Service Unavailable: Billing feature is currently disabled.' },
+      { status: 503 },
+    );
+  }
+
   try {
     const invoice = await getInvoiceByIdAdmin(id);
     if (!invoice) {
@@ -49,6 +57,13 @@ export async function PATCH(request: Request, context: RouteContext) {
     await requireOwnership(user, 'invoice', id);
   } catch (err) {
     return authFailure(err);
+  }
+
+  if (!appEnv.billingEnabled) {
+    return NextResponse.json(
+      { error: 'Service Unavailable: Billing feature is currently disabled.' },
+      { status: 503 },
+    );
   }
 
   try {

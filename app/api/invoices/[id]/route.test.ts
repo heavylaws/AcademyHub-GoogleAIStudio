@@ -24,7 +24,30 @@ vi.mock('@/services/billingAdminService', () => ({
 }));
 
 describe('/api/invoices/[id] routes', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv('BILLING_ENABLED', 'true');
+  });
+
+  it('returns 503 when BILLING_ENABLED is false and request is authenticated', async () => {
+    vi.stubEnv('BILLING_ENABLED', 'false');
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'admin_1', role: 'admin', academyId: 'acad_1' });
+
+    const resGET = await GET(
+      new NextRequest('http://localhost/api/invoices/inv_1'),
+      { params: Promise.resolve({ id: 'inv_1' }) }
+    );
+    expect(resGET.status).toBe(503);
+
+    const resPATCH = await PATCH(
+      new NextRequest('http://localhost/api/invoices/inv_1', {
+        method: 'PATCH',
+        body: JSON.stringify({ payment_status: 'paid' }),
+      }),
+      { params: Promise.resolve({ id: 'inv_1' }) }
+    );
+    expect(resPATCH.status).toBe(503);
+  });
 
   it('checks ownership before returning a single invoice', async () => {
     mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_1', role: 'parent' });

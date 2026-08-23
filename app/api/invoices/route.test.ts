@@ -24,7 +24,34 @@ vi.mock('@/lib/auth/ensureUserRecord', () => ({ ensureUserRecord: vi.fn() }));
 vi.mock('@/lib/prisma', () => ({ prisma: { user: { findUnique: vi.fn() } } }));
 
 describe('/api/invoices collection routes', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv('BILLING_ENABLED', 'true');
+  });
+
+  it('returns 503 when BILLING_ENABLED is false and request is authenticated', async () => {
+    vi.stubEnv('BILLING_ENABLED', 'false');
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'admin_1', role: 'admin', academyId: 'acad_1' });
+
+    const resGET = await GET(new NextRequest('http://localhost/api/invoices'));
+    expect(resGET.status).toBe(503);
+    const bodyGET = await resGET.json();
+    expect(bodyGET.error).toMatch(/billing feature is currently disabled/i);
+
+    const resPOST = await POST(new NextRequest('http://localhost/api/invoices', {
+      method: 'POST',
+      body: JSON.stringify({ parentName: 'Parent' }),
+    }));
+    expect(resPOST.status).toBe(503);
+  });
+
+  it('returns 401 unauthenticated error instead of 503 when BILLING_ENABLED is false', async () => {
+    vi.stubEnv('BILLING_ENABLED', 'false');
+    mockVerifyRequestAuth.mockRejectedValueOnce(new AuthError('Missing authentication session', 401));
+
+    const response = await GET(new NextRequest('http://localhost/api/invoices'));
+    expect(response.status).toBe(401);
+  });
 
   it('returns 401 before querying when authentication fails', async () => {
     mockVerifyRequestAuth.mockRejectedValueOnce(new AuthError('Missing authentication session', 401));

@@ -85,4 +85,12 @@ describe('runtime environment validation', () => {
 
     expect(() => assertProductionEnvironment()).not.toThrow();
   });
+
+  it('defaults billingEnabled to false and activates when BILLING_ENABLED is true', () => {
+    vi.stubEnv('BILLING_ENABLED', '');
+    expect(appEnv.billingEnabled).toBe(false);
+
+    vi.stubEnv('BILLING_ENABLED', 'true');
+    expect(appEnv.billingEnabled).toBe(true);
+  });
 });

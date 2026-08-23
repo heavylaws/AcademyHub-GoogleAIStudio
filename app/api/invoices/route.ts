@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth/requireRole';
 import { AuthError } from '@/lib/auth/types';
 import { ensureUserRecord } from '@/lib/auth/ensureUserRecord';
 import { prisma } from '@/lib/prisma';
+import { appEnv } from '@/lib/env';
 import {
   createInvoiceAdmin,
   listInvoicesAdmin,
@@ -28,6 +29,13 @@ export async function GET(request: Request) {
     return authFailure(err);
   }
 
+  if (!appEnv.billingEnabled) {
+    return NextResponse.json(
+      { error: 'Service Unavailable: Billing feature is currently disabled.' },
+      { status: 503 },
+    );
+  }
+
   if (!user.academyId) {
     return NextResponse.json({ error: 'Forbidden: No academy context' }, { status: 403 });
   }
@@ -50,6 +58,13 @@ export async function POST(request: Request) {
     requireRole(user, ['admin']);
   } catch (err) {
     return authFailure(err);
+  }
+
+  if (!appEnv.billingEnabled) {
+    return NextResponse.json(
+      { error: 'Service Unavailable: Billing feature is currently disabled.' },
+      { status: 503 },
+    );
   }
 
   try {

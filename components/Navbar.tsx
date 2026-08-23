@@ -35,12 +35,14 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
     }
   };
 
+  const isBillingEnabled = process.env.NEXT_PUBLIC_BILLING_ENABLED === 'true';
+
   const navItems = [
     { id: 'dashboard', label: 'Overview & RAG', icon: BarChart2 },
     { id: 'profiles', label: 'Athlete Profiles', icon: UserCheck },
     { id: 'biomechanics', label: 'Biomechanics & AI', icon: Activity },
     { id: 'scheduling', label: 'Scheduling & Court', icon: Calendar },
-    { id: 'billing', label: 'Billing & Ledger', icon: CreditCard },
+    ...(isBillingEnabled ? [{ id: 'billing', label: 'Billing & Ledger', icon: CreditCard }] : []),
     { id: 'auth', label: 'Auth & COPPA', icon: ShieldCheck },
   ];
 

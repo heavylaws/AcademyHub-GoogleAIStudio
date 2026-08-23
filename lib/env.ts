@@ -80,4 +80,7 @@ export const appEnv = {
   get aiPipelineEnabled() {
     return readEnv('NEXT_PUBLIC_ENABLE_AI_PIPELINE', 'false') === 'true';
   },
+  get billingEnabled() {
+    return (readEnv('BILLING_ENABLED', '') || readEnv('NEXT_PUBLIC_BILLING_ENABLED', 'false')) === 'true';
+  },
 };
