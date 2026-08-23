@@ -1,0 +1,85 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { requirePlatformAdmin } from '@/lib/auth/requirePlatformAdmin';
+import { AuthError } from '@/lib/auth/types';
+
+export const dynamic = 'force-dynamic';
+
+function authFailure(err: unknown) {
+  if (err instanceof AuthError) {
+    return NextResponse.json({ error: err.message }, { status: err.statusCode });
+  }
+  return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
+}
+
+export async function GET(request: Request) {
+  try {
+    await requirePlatformAdmin(request);
+  } catch (err) {
+    return authFailure(err);
+  }
+
+  try {
+    const academies = await prisma.academy.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            memberships: true,
+            athletes: true,
+            assessments: true,
+            invoices: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return NextResponse.json({ academies });
+  } catch (err) {
+    console.error('Error listing platform academies:', err);
+    return NextResponse.json({ error: 'Failed to list academies' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    await requirePlatformAdmin(request);
+  } catch (err) {
+    return authFailure(err);
+  }
+
+  try {
+    const body = await request.json();
+    const { name, slug } = body ?? {};
+
+    if (!name?.trim() || !slug?.trim()) {
+      return NextResponse.json({ error: 'name and slug are required' }, { status: 400 });
+    }
+
+    const existingSlug = await prisma.academy.findUnique({
+      where: { slug: slug.trim() },
+    });
+    if (existingSlug) {
+      return NextResponse.json({ error: 'Slug already in use' }, { status: 409 });
+    }
+
+    const academy = await prisma.academy.create({
+      data: {
+        name: name.trim(),
+        slug: slug.trim(),
+        isActive: true,
+      },
+    });
+
+    return NextResponse.json({ academy }, { status: 201 });
+  } catch (err) {
+    console.error('Error creating platform academy:', err);
+    return NextResponse.json({ error: 'Failed to create academy' }, { status: 500 });
+  }
+}

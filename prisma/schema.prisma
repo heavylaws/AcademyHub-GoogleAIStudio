@@ -64,6 +64,7 @@ model Academy {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -73,6 +74,7 @@ model Academy {
   invoices      Invoice[]
   schedules     Schedule[]
   coachProfiles CoachProfile[]
+  invites       Invite[]
 
   @@map("academies")
 }
@@ -100,9 +102,11 @@ model User {
   /// id matches Firebase Auth UID (string PK, not auto-increment)
   id          String   @id
   email       String   @unique
-  displayName String?  @map("display_name")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  displayName     String?  @map("display_name")
+  isPlatformAdmin Boolean  @default(false) @map("is_platform_admin")
+  emailVerified   Boolean  @default(false) @map("email_verified")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   // Relationships
   memberships  Membership[]
@@ -111,8 +115,69 @@ model User {
   invoices     Invoice[]     @relation("ParentInvoices")
   schedules    Schedule[]    @relation("CoachSchedules")
   coachProfile CoachProfile? @relation("UserCoachProfile")
+  invitesSent  Invite[]      @relation("InvitedBy")
+  accounts     Account[]
+  sessions     Session[]
 
   @@map("users")
+}
+
+/// Invites table: Closed invitation system for academy and platform access
+model Invite {
+  id              String    @id @default(cuid())
+  email           String
+  academyId       String    @map("academy_id")
+  role            UserRole
+  tokenHash       String    @unique @map("token_hash")
+  expiresAt       DateTime  @map("expires_at")
+  acceptedAt      DateTime? @map("accepted_at")
+  revokedAt       DateTime? @map("revoked_at")
+  invitedByUserId String    @map("invited_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  academy   Academy @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  invitedBy User    @relation("InvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([academyId])
+  @@map("invites")
+}
+
+/// Accounts table: Better Auth credentials and authentication accounts
+model Account {
+  id                    String    @id
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?
+  issuer                String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@map("accounts")
+}
+
+/// Sessions table: Better Auth user sessions
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
 }
 
 /// Athletes table: Youth profiles linked to parent user

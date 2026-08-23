@@ -1,8 +1,9 @@
 import { betterAuth } from 'better-auth';
+import { APIError } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { prisma } from '@/lib/prisma';
 import { appEnv } from '@/lib/env';
-
+import { internalInviteScope } from './internalInviteScope';
 
 const secret = appEnv.betterAuthSecret;
 
@@ -32,6 +33,11 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user, _context) => {
+          if (!internalInviteScope.getStore()) {
+            throw new APIError('FORBIDDEN', {
+              message: 'Public sign-up is disabled. Registration requires an invitation.',
+            });
+          }
           return {
             data: {
               email: user.email.toLowerCase(),
