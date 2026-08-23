@@ -70,6 +70,15 @@ export async function requireOwnership(
       }
       resourceAcademyId = assessment?.academyId;
       parentUserId = assessment?.athlete?.parentUserId;
+    } else if (resourceType === 'schedule') {
+      const schedule = await prisma.schedule.findUnique({
+        where: { id: resourceId },
+        select: { academyId: true, deletedAt: true },
+      });
+      if (schedule?.deletedAt !== null && schedule?.deletedAt !== undefined) {
+        throw new AuthError('Resource not found', 404);
+      }
+      resourceAcademyId = schedule?.academyId;
     } else {
       throw new AuthError('Forbidden: Unsupported resource type', 403);
     }
@@ -91,7 +100,11 @@ export async function requireOwnership(
       return;
     }
 
-    // Parent: must own the resource
+    // Parent: allowed read-only schedule access within academy; athlete/invoice/assessment require parentUserId ownership
+    if (resourceType === 'schedule') {
+      return;
+    }
+
     if (!parentUserId || parentUserId !== user.uid) {
       throw new AuthError('Forbidden: You do not own this resource', 403);
     }

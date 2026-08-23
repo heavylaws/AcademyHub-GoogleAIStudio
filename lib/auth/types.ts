@@ -4,7 +4,7 @@
 
 export type UserRole = 'admin' | 'coach' | 'parent';
 
-export type ResourceType = 'athlete' | 'invoice' | 'assessment';
+export type ResourceType = 'athlete' | 'invoice' | 'assessment' | 'schedule';
 
 export interface AuthUser {
   uid: string;
