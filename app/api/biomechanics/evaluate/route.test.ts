@@ -11,6 +11,7 @@ import { AuthError } from '@/lib/auth/types';
 // Mock auth middleware
 const mockVerifyRequestAuth = vi.fn();
 const mockRequireRole = vi.fn();
+const mockCheckAndRecordAiUsage = vi.fn();
 
 vi.mock('@/lib/auth/verifyRequestAuth', () => ({
   verifyRequestAuth: (req: any) => mockVerifyRequestAuth(req),
@@ -18,6 +19,17 @@ vi.mock('@/lib/auth/verifyRequestAuth', () => ({
 
 vi.mock('@/lib/auth/requireRole', () => ({
   requireRole: (user: any, allowedRoles: any) => mockRequireRole(user, allowedRoles),
+}));
+
+vi.mock('@/lib/auth/rateLimitAi', () => ({
+  checkAndRecordAiUsage: (...args: any[]) => mockCheckAndRecordAiUsage(...args),
+  AiRateLimitError: class extends Error {
+    statusCode = 429;
+    constructor(msg: string) {
+      super(msg);
+      this.name = 'AiRateLimitError';
+    }
+  },
 }));
 
 // Mock @google/genai with a class constructor
@@ -45,9 +57,10 @@ describe('POST /api/biomechanics/evaluate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...originalEnv };
-    // Default mock setup: authenticated as coach
-    mockVerifyRequestAuth.mockResolvedValue({ uid: 'coach_001', role: 'coach' });
+    // Default mock setup: authenticated as coach with academyId
+    mockVerifyRequestAuth.mockResolvedValue({ uid: 'coach_001', role: 'coach', academyId: 'acad_1' });
     mockRequireRole.mockReturnValue(undefined);
+    mockCheckAndRecordAiUsage.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -78,7 +91,6 @@ describe('POST /api/biomechanics/evaluate', () => {
     },
   };
 
-  // Test (a): Deterministic fallback path when GEMINI_API_KEY is unset
   describe('a. Deterministic Fallback Path', () => {
     it('returns deterministic_fallback, data_source manual, and omits agent_insights when GEMINI_API_KEY is unset', async () => {
       delete process.env.GEMINI_API_KEY;
@@ -104,7 +116,6 @@ describe('POST /api/biomechanics/evaluate', () => {
     });
   });
 
-  // Test (b): Scoring formula integrity
   describe('b. Scoring Formula Integrity', () => {
     it('verifies calculateComputedScore matches deterministic weighted formula for known inputs', () => {
       const score1 = calculateComputedScore(
@@ -130,9 +141,8 @@ describe('POST /api/biomechanics/evaluate', () => {
     });
   });
 
-  // Test (c): AI Error Resilience & Success handling
   describe('c. AI Error Resilience', () => {
-    it('returns pipeline_status: ai_error with fallback scoring on API rejection without throwing unhandled exceptions', async () => {
+    it('returns pipeline_status: ai_error with error_detail and failure_reason on API rejection', async () => {
       process.env.GEMINI_API_KEY = 'test-key-mock';
       mockGenerateContent.mockRejectedValueOnce(new Error('Gemini Quota Exceeded (ResourceExhausted)'));
 
@@ -150,6 +160,7 @@ describe('POST /api/biomechanics/evaluate', () => {
       expect(json.assessment.pipeline_status).toBe('ai_error');
       expect(json.assessment.data_source).toBe('manual');
       expect(json.assessment.error_detail).toContain('Gemini Quota Exceeded');
+      expect(json.assessment.failure_reason).toBeDefined();
       expect(json.assessment.computed_score).toBe(91);
       expect(json.assessment.rubric_grade).toBe('A');
     });
@@ -212,8 +223,7 @@ describe('POST /api/biomechanics/evaluate', () => {
     });
   });
 
-  // Test (d): Authentication & Role Enforcement
-  describe('d. Authentication & Role Enforcement', () => {
+  describe('d. Authentication & Hardening Controls', () => {
     it('rejects unauthenticated requests with status 401', async () => {
       mockVerifyRequestAuth.mockRejectedValueOnce(new AuthError('Missing authentication session', 401));
 
@@ -230,7 +240,7 @@ describe('POST /api/biomechanics/evaluate', () => {
     });
 
     it('rejects parent role requests with status 403', async () => {
-      mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_user_1', role: 'parent' });
+      mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_user_1', role: 'parent', academyId: 'acad_1' });
       mockRequireRole.mockImplementationOnce(() => {
         throw new AuthError('Forbidden: Insufficient role permissions', 403);
       });
@@ -245,6 +255,43 @@ describe('POST /api/biomechanics/evaluate', () => {
       expect(res.status).toBe(403);
       const json = await res.json();
       expect(json.error).toBe('Forbidden: Insufficient role permissions');
+    });
+
+    it('rejects user without academyId with status 403 before rate limiting', async () => {
+      mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'coach_001', role: 'coach', academyId: undefined });
+
+      const req = new NextRequest('http://localhost:3000/api/biomechanics/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(samplePayload),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(403);
+      const json = await res.json();
+      expect(json.error).toBe('Forbidden: User does not belong to an academy');
+      expect(mockCheckAndRecordAiUsage).not.toHaveBeenCalled();
+    });
+
+    it('rejects oversized field (>1000 chars) with status 400', async () => {
+      const longPayload = {
+        ...samplePayload,
+        qualitative_observations: {
+          ...samplePayload.qualitative_observations,
+          coach_notes: 'x'.repeat(1001),
+        },
+      };
+
+      const req = new NextRequest('http://localhost:3000/api/biomechanics/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(longPayload),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toContain('exceeds maximum allowed length');
     });
   });
 });

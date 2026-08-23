@@ -88,9 +88,28 @@ describe('runtime environment validation', () => {
 
   it('defaults billingEnabled to false and activates when BILLING_ENABLED is true', () => {
     vi.stubEnv('BILLING_ENABLED', '');
+    vi.stubEnv('NEXT_PUBLIC_BILLING_ENABLED', '');
     expect(appEnv.billingEnabled).toBe(false);
 
     vi.stubEnv('BILLING_ENABLED', 'true');
     expect(appEnv.billingEnabled).toBe(true);
+  });
+
+  it('does NOT enable billing when only NEXT_PUBLIC_BILLING_ENABLED is true', () => {
+    vi.stubEnv('BILLING_ENABLED', '');
+    vi.stubEnv('NEXT_PUBLIC_BILLING_ENABLED', 'true');
+    expect(appEnv.billingEnabled).toBe(false);
+  });
+
+  it('returns default AI rate limits and overrides from env', () => {
+    vi.stubEnv('AI_RATE_LIMIT_PER_MINUTE', '');
+    vi.stubEnv('AI_MONTHLY_CAP_PER_ACADEMY', '');
+    expect(appEnv.aiRateLimitPerMinute).toBe(10);
+    expect(appEnv.aiMonthlyCapPerAcademy).toBe(1000);
+
+    vi.stubEnv('AI_RATE_LIMIT_PER_MINUTE', '5');
+    vi.stubEnv('AI_MONTHLY_CAP_PER_ACADEMY', '50');
+    expect(appEnv.aiRateLimitPerMinute).toBe(5);
+    expect(appEnv.aiMonthlyCapPerAcademy).toBe(50);
   });
 });

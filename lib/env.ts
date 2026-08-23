@@ -81,6 +81,14 @@ export const appEnv = {
     return readEnv('NEXT_PUBLIC_ENABLE_AI_PIPELINE', 'false') === 'true';
   },
   get billingEnabled() {
-    return (readEnv('BILLING_ENABLED', '') || readEnv('NEXT_PUBLIC_BILLING_ENABLED', 'false')) === 'true';
+    return readEnv('BILLING_ENABLED', 'false') === 'true';
+  },
+  get aiRateLimitPerMinute() {
+    const val = parseInt(readEnv('AI_RATE_LIMIT_PER_MINUTE', '10'), 10);
+    return isNaN(val) ? 10 : val;
+  },
+  get aiMonthlyCapPerAcademy() {
+    const val = parseInt(readEnv('AI_MONTHLY_CAP_PER_ACADEMY', '1000'), 10);
+    return isNaN(val) ? 1000 : val;
   },
 };

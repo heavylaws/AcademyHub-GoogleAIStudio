@@ -370,3 +370,16 @@ model CoachProfile {
   @@index([academyId])
   @@map("coaches")
 }
+
+/// AiUsage table: Rate limiting and audit tracking for AI model invocations (deliberately no foreign keys)
+model AiUsage {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  academyId String   @map("academy_id")
+  route     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([academyId, createdAt])
+  @@map("ai_usages")
+}
