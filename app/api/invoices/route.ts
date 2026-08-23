@@ -23,15 +23,19 @@ export async function GET(request: Request) {
   let user;
   try {
     user = await verifyRequestAuth(request);
-    requireRole(user, ['parent', 'coach', 'admin']);
+    requireRole(user, ['parent', 'admin']);
   } catch (err) {
     return authFailure(err);
   }
 
+  if (!user.academyId) {
+    return NextResponse.json({ error: 'Forbidden: No academy context' }, { status: 403 });
+  }
+
   try {
     const invoices = user.role === 'parent'
-      ? await listInvoicesForParentUser(user.uid)
-      : await listInvoicesAdmin();
+      ? await listInvoicesForParentUser(user.uid, user.academyId)
+      : await listInvoicesAdmin(user.academyId);
     return NextResponse.json({ invoices });
   } catch (err) {
     console.error('Error listing invoices:', err);

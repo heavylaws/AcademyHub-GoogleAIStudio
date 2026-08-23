@@ -75,4 +75,20 @@ describe('/api/invoices/[id] routes', () => {
     expect(response.status).toBe(403);
     expect(mockUpdateInvoiceAdmin).not.toHaveBeenCalled();
   });
+
+  it('checks tenant ownership before allowing PATCH update', async () => {
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'admin_1', role: 'admin', academyId: 'acad_1' });
+    mockRequireOwnership.mockRejectedValueOnce(new AuthError('Resource not found', 404));
+
+    const response = await PATCH(
+      new NextRequest('http://localhost/api/invoices/invoice_1', {
+        method: 'PATCH',
+        body: JSON.stringify({ payment_status: 'paid' }),
+      }),
+      { params: Promise.resolve({ id: 'invoice_1' }) }
+    );
+
+    expect(response.status).toBe(404);
+    expect(mockUpdateInvoiceAdmin).not.toHaveBeenCalled();
+  });
 });

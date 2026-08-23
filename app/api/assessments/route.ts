@@ -25,8 +25,12 @@ export async function GET(request: Request) {
     return authFailure(err);
   }
 
+  if (!user.academyId) {
+    return NextResponse.json({ error: 'Forbidden: No academy context' }, { status: 403 });
+  }
+
   try {
-    const assessments = await listAssessmentsForUser(user.uid, user.role);
+    const assessments = await listAssessmentsForUser(user.uid, user.academyId, user.role);
     return NextResponse.json({ assessments });
   } catch (err) {
     console.error('Error listing assessments:', err);
@@ -52,9 +56,9 @@ export async function POST(request: Request) {
 
     const athlete = await prisma.athlete.findUnique({
       where: { id: input.athlete_id },
-      select: { id: true },
+      select: { id: true, academyId: true },
     });
-    if (!athlete) {
+    if (!athlete || athlete.academyId !== user.academyId) {
       return NextResponse.json({ error: 'Athlete not found' }, { status: 400 });
     }
 

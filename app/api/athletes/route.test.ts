@@ -30,17 +30,25 @@ describe('/api/athletes collection routes', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('filters parent lists by authenticated UID at the Prisma query boundary', async () => {
-    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_1', role: 'parent' });
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_1', role: 'parent', academyId: 'acad_1' });
     mockFindMany.mockResolvedValueOnce([]);
 
     const response = await GET(new NextRequest('http://localhost/api/athletes'));
 
     expect(response.status).toBe(200);
-    expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: { parentUserId: 'parent_1' } }));
+    expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: { academyId: 'acad_1', parentUserId: 'parent_1' } }));
+  });
+
+  it('fails closed with 403 if !user.academyId on GET', async () => {
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_1', role: 'parent' });
+
+    const response = await GET(new NextRequest('http://localhost/api/athletes'));
+
+    expect(response.status).toBe(403);
   });
 
   it('rejects athlete creation for non-coaches before provisioning or writing', async () => {
-    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_1', role: 'parent' });
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_1', role: 'parent', academyId: 'acad_1' });
     mockRequireRole.mockImplementationOnce(() => {
       throw new AuthError('Forbidden: Insufficient role permissions', 403);
     });

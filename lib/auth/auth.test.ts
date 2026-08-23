@@ -243,19 +243,19 @@ describe('Authorization middleware', () => {
 
   describe('requireOwnership', () => {
     it('allows parent user who owns the athlete resource', async () => {
-      mockAthleteFindUnique.mockResolvedValueOnce({ parentUserId: 'parent_uid_100' });
-      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+      mockAthleteFindUnique.mockResolvedValueOnce({ academyId: 'acad_test', parentUserId: 'parent_uid_100' });
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', academyId: 'acad_test', claims: { role: 'parent' } };
 
       await expect(requireOwnership(parentUser, 'athlete', 'ath_8042')).resolves.not.toThrow();
       expect(mockAthleteFindUnique).toHaveBeenCalledWith({
         where: { id: 'ath_8042' },
-        select: { parentUserId: true },
+        select: { academyId: true, parentUserId: true },
       });
     });
 
     it('rejects parent user who does not own the athlete resource', async () => {
-      mockAthleteFindUnique.mockResolvedValueOnce({ parentUserId: 'other_parent_uid' });
-      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+      mockAthleteFindUnique.mockResolvedValueOnce({ academyId: 'acad_test', parentUserId: 'other_parent_uid' });
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', academyId: 'acad_test', claims: { role: 'parent' } };
 
       await expect(requireOwnership(parentUser, 'athlete', 'ath_8042')).rejects.toThrow(
         'Forbidden: You do not own this resource'
@@ -263,19 +263,19 @@ describe('Authorization middleware', () => {
     });
 
     it('allows parent user who owns the invoice resource', async () => {
-      mockInvoiceFindUnique.mockResolvedValueOnce({ parentUserId: 'parent_uid_100' });
-      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+      mockInvoiceFindUnique.mockResolvedValueOnce({ academyId: 'acad_test', parentUserId: 'parent_uid_100' });
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', academyId: 'acad_test', claims: { role: 'parent' } };
 
       await expect(requireOwnership(parentUser, 'invoice', 'INV-8042')).resolves.not.toThrow();
       expect(mockInvoiceFindUnique).toHaveBeenCalledWith({
         where: { id: 'INV-8042' },
-        select: { parentUserId: true },
+        select: { academyId: true, parentUserId: true },
       });
     });
 
     it('rejects parent user who does not own the invoice resource', async () => {
-      mockInvoiceFindUnique.mockResolvedValueOnce({ parentUserId: 'other_parent_uid' });
-      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+      mockInvoiceFindUnique.mockResolvedValueOnce({ academyId: 'acad_test', parentUserId: 'other_parent_uid' });
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', academyId: 'acad_test', claims: { role: 'parent' } };
 
       await expect(requireOwnership(parentUser, 'invoice', 'INV-8042')).rejects.toThrow(
         'Forbidden: You do not own this resource'
@@ -283,19 +283,19 @@ describe('Authorization middleware', () => {
     });
 
     it('allows parent user who owns an assessment through its athlete', async () => {
-      mockAssessmentFindUnique.mockResolvedValueOnce({ athlete: { parentUserId: 'parent_uid_100' } });
-      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+      mockAssessmentFindUnique.mockResolvedValueOnce({ academyId: 'acad_test', athlete: { parentUserId: 'parent_uid_100' } });
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', academyId: 'acad_test', claims: { role: 'parent' } };
 
       await expect(requireOwnership(parentUser, 'assessment', 'asm_8042')).resolves.not.toThrow();
       expect(mockAssessmentFindUnique).toHaveBeenCalledWith({
         where: { id: 'asm_8042' },
-        select: { athlete: { select: { parentUserId: true } } },
+        select: { academyId: true, athlete: { select: { parentUserId: true } } },
       });
     });
 
     it('rejects a parent who does not own an assessment through its athlete', async () => {
-      mockAssessmentFindUnique.mockResolvedValueOnce({ athlete: { parentUserId: 'other_parent_uid' } });
-      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+      mockAssessmentFindUnique.mockResolvedValueOnce({ academyId: 'acad_test', athlete: { parentUserId: 'other_parent_uid' } });
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', academyId: 'acad_test', claims: { role: 'parent' } };
 
       await expect(requireOwnership(parentUser, 'assessment', 'asm_8042')).rejects.toThrow(
         'Forbidden: You do not own this resource'
@@ -303,29 +303,31 @@ describe('Authorization middleware', () => {
     });
 
     it('allows coach and admin roles to bypass ownership checks', async () => {
-      const coachUser: AuthUser = { uid: 'coach_uid_1', role: 'coach', claims: { role: 'coach' } };
-      const adminUser: AuthUser = { uid: 'admin_uid_1', role: 'admin', claims: { role: 'admin' } };
+      mockAthleteFindUnique.mockResolvedValueOnce({ academyId: 'acad_test', parentUserId: 'parent_999' });
+      mockInvoiceFindUnique.mockResolvedValueOnce({ academyId: 'acad_test', parentUserId: 'parent_999' });
+      mockAssessmentFindUnique.mockResolvedValueOnce({ academyId: 'acad_test', athlete: { parentUserId: 'parent_999' } });
+
+      const coachUser: AuthUser = { uid: 'coach_uid_1', role: 'coach', academyId: 'acad_test', claims: { role: 'coach' } };
+      const adminUser: AuthUser = { uid: 'admin_uid_1', role: 'admin', academyId: 'acad_test', claims: { role: 'admin' } };
 
       await expect(requireOwnership(coachUser, 'athlete', 'ath_8042')).resolves.not.toThrow();
       await expect(requireOwnership(adminUser, 'invoice', 'INV-8042')).resolves.not.toThrow();
       await expect(requireOwnership(coachUser, 'assessment', 'asm_8042')).resolves.not.toThrow();
-
-      expect(mockAthleteFindUnique).not.toHaveBeenCalled();
-      expect(mockInvoiceFindUnique).not.toHaveBeenCalled();
     });
 
     it('rejects when an assessment is not found', async () => {
       mockAssessmentFindUnique.mockResolvedValueOnce(null);
-      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', academyId: 'acad_test', claims: { role: 'parent' } };
 
-      await expect(requireOwnership(parentUser, 'assessment', 'asm_nonexistent')).rejects.toThrow(
-        'Forbidden: You do not own this resource'
-      );
+      await expect(requireOwnership(parentUser, 'assessment', 'asm_nonexistent')).rejects.toMatchObject({
+        statusCode: 404,
+        message: 'Resource not found',
+      });
     });
 
     it('fails closed when the assessment ownership join errors', async () => {
       mockAssessmentFindUnique.mockRejectedValueOnce(new Error('Postgres connection pool error'));
-      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', academyId: 'acad_test', claims: { role: 'parent' } };
 
       await expect(requireOwnership(parentUser, 'assessment', 'asm_8042')).rejects.toThrow(
         'Forbidden: Resource ownership check failed'
@@ -334,19 +336,47 @@ describe('Authorization middleware', () => {
 
     it('rejects when target resource is not found in database', async () => {
       mockAthleteFindUnique.mockResolvedValueOnce(null);
-      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', academyId: 'acad_test', claims: { role: 'parent' } };
 
-      await expect(requireOwnership(parentUser, 'athlete', 'ath_nonexistent')).rejects.toThrow(
-        'Forbidden: You do not own this resource'
-      );
+      await expect(requireOwnership(parentUser, 'athlete', 'ath_nonexistent')).rejects.toMatchObject({
+        statusCode: 404,
+        message: 'Resource not found',
+      });
     });
 
     it('fails closed with AuthError 403 on simulated database error', async () => {
       mockInvoiceFindUnique.mockRejectedValueOnce(new Error('Postgres connection pool error'));
-      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', claims: { role: 'parent' } };
+      const parentUser: AuthUser = { uid: 'parent_uid_100', role: 'parent', academyId: 'acad_test', claims: { role: 'parent' } };
 
       await expect(requireOwnership(parentUser, 'invoice', 'INV-8042')).rejects.toThrow(
         'Forbidden: Resource ownership check failed'
+      );
+    });
+
+    it('denies admin access to a cross-tenant athlete', async () => {
+      mockAthleteFindUnique.mockResolvedValueOnce({ academyId: 'acad_B', parentUserId: 'parent_999' });
+      const adminUser: AuthUser = { uid: 'admin_uid_1', role: 'admin', academyId: 'acad_A', claims: { role: 'admin' } };
+
+      await expect(requireOwnership(adminUser, 'athlete', 'ath_8042')).rejects.toMatchObject({
+        statusCode: 404,
+        message: 'Resource not found',
+      });
+    });
+
+    it('denies coach access to invoices via requireOwnership', async () => {
+      mockInvoiceFindUnique.mockResolvedValueOnce({ academyId: 'acad_test', parentUserId: 'parent_999' });
+      const coachUser: AuthUser = { uid: 'coach_uid_1', role: 'coach', academyId: 'acad_test', claims: { role: 'coach' } };
+
+      await expect(requireOwnership(coachUser, 'invoice', 'INV-8042')).rejects.toThrow(
+        'Forbidden: Coaches do not have invoice access'
+      );
+    });
+
+    it('denies user with no academyId', async () => {
+      const userWithoutAcademy: AuthUser = { uid: 'user_uid_1', role: 'parent', claims: { role: 'parent' } };
+
+      await expect(requireOwnership(userWithoutAcademy, 'athlete', 'ath_8042')).rejects.toThrow(
+        'Forbidden: No academy context'
       );
     });
   });

@@ -15,7 +15,7 @@ vi.mock('@/lib/auth/requireRole', () => ({ requireRole: (user: unknown, roles: u
 vi.mock('@/lib/auth/ensureUserRecord', () => ({ ensureUserRecord: (user: unknown) => mockEnsureUserRecord(user) }));
 vi.mock('@/lib/prisma', () => ({ prisma: { athlete: { findUnique: (args: unknown) => mockAthleteFindUnique(args) } } }));
 vi.mock('@/services/assessmentService', () => ({
-  listAssessmentsForUser: (uid: string, role?: string) => mockListAssessmentsForUser(uid, role),
+  listAssessmentsForUser: (uid: string, academyId: string, role?: string) => mockListAssessmentsForUser(uid, academyId, role),
   createAssessment: (input: unknown, uid: string) => mockCreateAssessment(input, uid),
 }));
 
@@ -23,13 +23,21 @@ describe('/api/assessments collection routes', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('uses the athlete join scope for parent list requests', async () => {
-    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_1', role: 'parent' });
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_1', role: 'parent', academyId: 'acad_1' });
     mockListAssessmentsForUser.mockResolvedValueOnce([]);
 
     const response = await GET(new NextRequest('http://localhost/api/assessments'));
 
     expect(response.status).toBe(200);
-    expect(mockListAssessmentsForUser).toHaveBeenCalledWith('parent_1', 'parent');
+    expect(mockListAssessmentsForUser).toHaveBeenCalledWith('parent_1', 'acad_1', 'parent');
+  });
+
+  it('fails closed with 403 if !user.academyId', async () => {
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_1', role: 'parent' });
+
+    const response = await GET(new NextRequest('http://localhost/api/assessments'));
+
+    expect(response.status).toBe(403);
   });
 
   it('rejects unauthenticated requests before querying', async () => {

@@ -66,9 +66,11 @@ function toAssessment(record: AssessmentWithRelations): Assessment {
   };
 }
 
-export async function listAssessmentsForUser(userId: string, role?: string): Promise<Assessment[]> {
+export async function listAssessmentsForUser(userId: string, academyId: string, role?: string): Promise<Assessment[]> {
   const records = await prisma.assessment.findMany({
-    where: role === 'parent' ? { athlete: { parentUserId: userId } } : undefined,
+    where: role === 'parent'
+      ? { academyId, athlete: { parentUserId: userId } }
+      : { academyId },
     include: assessmentInclude,
     orderBy: { createdAt: 'desc' },
   });

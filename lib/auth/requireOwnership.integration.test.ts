@@ -10,9 +10,9 @@ const coachId = `${suffix}_coach`;
 const assessmentId = `${suffix}_assessment`;
 const athleteId = `${suffix}_athlete`;
 
-const parentUser: AuthUser = { uid: parentId, role: 'parent', claims: { role: 'parent' } };
-const otherParent: AuthUser = { uid: otherParentId, role: 'parent', claims: { role: 'parent' } };
-const coachUser: AuthUser = { uid: coachId, role: 'coach', claims: { role: 'coach' } };
+let parentUser: AuthUser;
+let otherParent: AuthUser;
+let coachUser: AuthUser;
 
 describe('requireOwnership assessment live Postgres join', () => {
   it('resolves ownership through Assessment.athlete.parentUserId', async () => {
@@ -20,6 +20,10 @@ describe('requireOwnership assessment live Postgres join', () => {
       data: { name: 'Test Academy', slug: `test_academy_${suffix}` },
     });
     const academyId = academy.id;
+
+    parentUser = { uid: parentId, role: 'parent', academyId, claims: { role: 'parent' } };
+    otherParent = { uid: otherParentId, role: 'parent', academyId, claims: { role: 'parent' } };
+    coachUser = { uid: coachId, role: 'coach', academyId, claims: { role: 'coach' } };
 
     await prisma.user.createMany({
       data: [
@@ -65,6 +69,41 @@ describe('requireOwnership assessment live Postgres join', () => {
     await expect(requireOwnership(parentUser, 'assessment', assessmentId)).resolves.toBeUndefined();
     await expect(requireOwnership(otherParent, 'assessment', assessmentId)).rejects.toThrow('You do not own');
     await expect(requireOwnership(coachUser, 'assessment', assessmentId)).resolves.toBeUndefined();
+  });
+
+  it('denies access across different tenants', async () => {
+    const academyB = await prisma.academy.create({
+      data: { name: 'Test Academy B', slug: `test_academy_b_${suffix}` },
+    });
+    const athleteBId = `${suffix}_athlete_b`;
+    const parentBId = `${suffix}_parent_b`;
+
+    await prisma.user.create({
+      data: { id: parentBId, email: `${parentBId}@example.com`, displayName: 'Parent B' },
+    });
+    await prisma.membership.create({
+      data: { userId: parentBId, academyId: academyB.id, role: 'PARENT' },
+    });
+    await prisma.athlete.create({
+      data: {
+        id: athleteBId,
+        academyId: academyB.id,
+        name: 'Phase 3.3 Test Athlete B',
+        parentUserId: parentBId,
+        parentEmail: `${parentBId}@example.com`,
+        guardianConsent: true,
+      },
+    });
+
+    // parentUser has academyId from academy A. Trying to access athlete in academy B.
+    await expect(requireOwnership(parentUser, 'athlete', athleteBId)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Resource not found',
+    });
+
+    await prisma.athlete.delete({ where: { id: athleteBId } });
+    await prisma.user.delete({ where: { id: parentBId } });
+    await prisma.academy.delete({ where: { id: academyB.id } });
   });
 
   afterAll(async () => {

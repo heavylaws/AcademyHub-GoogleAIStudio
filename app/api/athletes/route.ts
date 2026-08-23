@@ -77,9 +77,15 @@ export async function GET(request: Request) {
     return authFailure(err);
   }
 
+  if (!user.academyId) {
+    return NextResponse.json({ error: 'Forbidden: No academy context' }, { status: 403 });
+  }
+
   try {
     const athletes = await prisma.athlete.findMany({
-      where: user.role === 'parent' ? { parentUserId: user.uid } : undefined,
+      where: user.role === 'parent'
+        ? { academyId: user.academyId, parentUserId: user.uid }
+        : { academyId: user.academyId },
       include: athleteInclude,
       orderBy: { createdAt: 'desc' },
     });

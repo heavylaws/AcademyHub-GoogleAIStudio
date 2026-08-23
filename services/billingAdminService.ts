@@ -74,17 +74,18 @@ function toFamilyInvoice(invoice: InvoiceWithRelations): FamilyInvoice {
   };
 }
 
-export async function listInvoicesAdmin(): Promise<FamilyInvoice[]> {
+export async function listInvoicesAdmin(academyId: string): Promise<FamilyInvoice[]> {
   const invoices = await prisma.invoice.findMany({
+    where: { academyId },
     include: invoiceInclude,
     orderBy: { issuedDate: 'desc' },
   });
   return invoices.map(toFamilyInvoice);
 }
 
-export async function listInvoicesForParentUser(parentUserId: string): Promise<FamilyInvoice[]> {
+export async function listInvoicesForParentUser(parentUserId: string, academyId: string): Promise<FamilyInvoice[]> {
   const invoices = await prisma.invoice.findMany({
-    where: { parentUserId },
+    where: { academyId, parentUserId },
     include: invoiceInclude,
     orderBy: { issuedDate: 'desc' },
   });

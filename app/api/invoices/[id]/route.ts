@@ -46,6 +46,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const user = await verifyRequestAuth(request);
     requireRole(user, ['admin']);
+    await requireOwnership(user, 'invoice', id);
   } catch (err) {
     return authFailure(err);
   }
