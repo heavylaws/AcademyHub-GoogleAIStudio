@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { appEnv, assertProductionEnvironment } from './env';
+import { appEnv, assertProductionEnvironment, DEFAULT_AI_MODEL } from './env';
 
 describe('runtime environment validation', () => {
   afterEach(() => {
@@ -111,5 +111,13 @@ describe('runtime environment validation', () => {
     vi.stubEnv('AI_MONTHLY_CAP_PER_ACADEMY', '50');
     expect(appEnv.aiRateLimitPerMinute).toBe(5);
     expect(appEnv.aiMonthlyCapPerAcademy).toBe(50);
+  });
+
+  it('returns default AI model and allows AI_MODEL env override', () => {
+    vi.stubEnv('AI_MODEL', '');
+    expect(appEnv.aiModel).toBe(DEFAULT_AI_MODEL);
+
+    vi.stubEnv('AI_MODEL', 'gemini-2.5-flash');
+    expect(appEnv.aiModel).toBe('gemini-2.5-flash');
   });
 });
