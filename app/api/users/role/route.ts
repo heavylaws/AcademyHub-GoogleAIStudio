@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyRequestAuth } from '@/lib/auth/verifyRequestAuth';
 import { requireRole } from '@/lib/auth/requireRole';
 import { AuthError } from '@/lib/auth/types';
+import { authFailure } from '@/lib/auth/authFailure';
 import { Prisma, UserRole } from '@prisma/client';
 
 const validRoles = new Set(['admin', 'coach', 'parent']);
@@ -19,27 +20,37 @@ export async function GET(request: Request) {
     const user = await verifyRequestAuth(request);
     requireRole(user, ['admin']);
 
-    const users = await prisma.user.findMany({
+    if (!user.academyId) {
+      return NextResponse.json({ error: 'Forbidden: No academy context' }, { status: 403 });
+    }
+
+    // Scope to caller's academy — only list users who are members of this academy
+    const memberships = await prisma.membership.findMany({
+      where: { academyId: user.academyId },
       select: {
-        id: true,
-        email: true,
-        displayName: true,
-        memberships: { select: { role: true }, take: 1 },
+        role: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            displayName: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { user: { createdAt: 'asc' } },
     });
 
     return NextResponse.json({
-      users: users.map((entry) => ({
-        uid: entry.id,
-        email: entry.email,
-        displayName: entry.displayName,
-        role: entry.memberships[0]?.role ? String(entry.memberships[0].role).toLowerCase() : 'none',
+      users: memberships.map((entry) => ({
+        uid: entry.user.id,
+        email: entry.user.email,
+        displayName: entry.user.displayName,
+        role: entry.role ? String(entry.role).toLowerCase() : 'none',
       })),
     });
   } catch (error) {
     if (error instanceof AuthError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return authFailure(error);
     }
 
     console.error('Failed to list users:', error);
@@ -51,6 +62,10 @@ export async function POST(request: Request) {
   try {
     const user = await verifyRequestAuth(request);
     requireRole(user, ['admin']);
+
+    if (!user.academyId) {
+      return NextResponse.json({ error: 'Forbidden: No academy context' }, { status: 403 });
+    }
 
     const payload = await request.json();
     const { uid, role } = payload ?? {};
@@ -64,26 +79,29 @@ export async function POST(request: Request) {
     }
 
     const normalizedRole = role as keyof typeof roleMap;
-    const existingUser = await prisma.user.findUnique({
-      where: { id: uid },
-      select: { id: true, memberships: { select: { id: true, role: true }, take: 1 } },
+
+    // Find the target user's membership in the CALLER's academy (not take: 1 globally)
+    const membership = await prisma.membership.findUnique({
+      where: {
+        userId_academyId: {
+          userId: uid,
+          academyId: user.academyId,
+        },
+      },
+      select: { id: true, role: true },
     });
 
-    if (!existingUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const membership = existingUser.memberships[0];
     if (!membership) {
-      return NextResponse.json({ error: 'User has no membership to update' }, { status: 400 });
+      return NextResponse.json({ error: 'User not found in this academy' }, { status: 404 });
     }
 
     const demotingAdmin = membership.role === UserRole.ADMIN && normalizedRole !== 'admin';
 
     if (demotingAdmin) {
       await prisma.$transaction(async (tx) => {
+        // Count admins in THIS academy, not globally
         const adminCount = await tx.membership.count({
-          where: { role: UserRole.ADMIN },
+          where: { role: UserRole.ADMIN, academyId: user.academyId },
         });
 
         if (adminCount <= 1) {
@@ -107,7 +125,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, role: normalizedRole });
   } catch (error) {
     if (error instanceof AuthError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+      return authFailure(error);
     }
 
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {

@@ -24,8 +24,10 @@ interface NavbarProps {
 }
 
 export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
-  const { user, role, loading: authLoading, signOut } = useAuth();
+  const { user, role, loading: authLoading, signOut, academies, activeAcademyId, setActiveAcademy } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+
+  const activeAcademy = academies?.find(a => a.id === activeAcademyId);
 
   const handleSignOut = async () => {
     try {
@@ -95,17 +97,36 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
           </nav>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab('auth')}
-              title="Click to view auth status & RBAC security gate"
-              className="flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-medium hover:border-cyan-500/50 transition-all"
-            >
-              <span className={`w-2 h-2 rounded-full ${
-                role === 'admin' ? 'bg-cyan-500' : role === 'coach' ? 'bg-emerald-500' : role === 'parent' ? 'bg-purple-500' : 'bg-slate-400'
-              }`} />
-              <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">{currentRole}:</span>
-              <span className="text-slate-500 dark:text-slate-400 truncate max-w-[90px] hidden sm:inline">{displayName}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('auth')}
+                title="Click to view auth status & RBAC security gate"
+                className="flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-medium hover:border-cyan-500/50 transition-all"
+              >
+                <span className={`w-2 h-2 rounded-full ${
+                  role === 'admin' ? 'bg-cyan-500' : role === 'coach' ? 'bg-emerald-500' : role === 'parent' ? 'bg-purple-500' : 'bg-slate-400'
+                }`} />
+                <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">{currentRole}:</span>
+                <span className="text-slate-500 dark:text-slate-400 truncate max-w-[90px] hidden sm:inline">{displayName}</span>
+              </button>
+              
+              {academies.length > 1 && (
+                <select
+                  value={activeAcademyId || ''}
+                  onChange={(e) => setActiveAcademy(e.target.value)}
+                  className="px-3 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-medium hover:border-cyan-500/50 transition-all text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                >
+                  {academies.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              )}
+              {academies.length === 1 && activeAcademy && (
+                <div className="px-3 min-h-[44px] flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                  {activeAcademy.name}
+                </div>
+              )}
+            </div>
 
             {authLoading ? (
               <div className="px-3 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400 text-xs flex items-center justify-center gap-1.5">
@@ -218,6 +239,23 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
                   <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">{currentRole}:</span>
                   <span className="text-slate-500 dark:text-slate-400 truncate">{displayName}</span>
                 </button>
+                
+                {academies.length > 1 && (
+                  <select
+                    value={activeAcademyId || ''}
+                    onChange={(e) => setActiveAcademy(e.target.value)}
+                    className="flex w-full items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-800 dark:text-slate-200 focus:outline-none"
+                  >
+                    {academies.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                )}
+                {academies.length === 1 && activeAcademy && (
+                  <div className="flex w-full items-center justify-center gap-2 px-4 min-h-[44px] rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-500 dark:text-slate-400">
+                    {activeAcademy.name}
+                  </div>
+                )}
                 
                 {authLoading ? (
                   <div className="px-4 min-h-[44px] flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">

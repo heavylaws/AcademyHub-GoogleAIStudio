@@ -187,24 +187,158 @@ describe('Auth flow end-to-end integration against live Postgres', () => {
     expect(() => requireRole(authUser, ['admin', 'coach', 'parent'])).toThrow(AuthError);
   });
 
+  // --- Phase K: Multi-membership integration tests (Cases 7–10) ---
+
+  const multiMemEmail = `c2_multi_${suffix}@example.com`;
+  let multiMemUserId: string;
+  let academyBId: string;
+  let multiMemCookieHeader: string;
+
+  it('Case 7: Multi-membership user with X-Academy-Id header for Academy A resolves coach role', async () => {
+    // Create second academy
+    const academyB = await prisma.academy.create({
+      data: {
+        name: `C2 Academy B ${suffix}`,
+        slug: `c2_slug_b_${suffix}`,
+        isActive: true,
+      },
+    });
+    academyBId = academyB.id;
+
+    // Create multi-membership user
+    const createdMulti = await internalInviteScope.run(true, async () => {
+      return await auth.api.signUpEmail({
+        body: {
+          email: multiMemEmail,
+          password,
+          name: 'Multi Membership User',
+        },
+      });
+    });
+    multiMemUserId = createdMulti.user.id;
+
+    // Create membership as COACH in Academy A
+    await prisma.membership.create({
+      data: {
+        userId: multiMemUserId,
+        academyId,
+        role: 'COACH',
+      },
+    });
+
+    // Create membership as PARENT in Academy B
+    await prisma.membership.create({
+      data: {
+        userId: multiMemUserId,
+        academyId: academyBId,
+        role: 'PARENT',
+      },
+    });
+
+    // Sign in to get session
+    const signIn = await auth.api.signInEmail({
+      body: { email: multiMemEmail, password },
+      returnHeaders: true,
+    });
+    const setCookie = signIn.headers.get('set-cookie');
+    multiMemCookieHeader = setCookie!.split(';')[0];
+
+    // Request with X-Academy-Id = Academy A → should resolve as coach
+    const req = new Request('http://localhost:3000/api/test', {
+      headers: {
+        cookie: multiMemCookieHeader,
+        'x-academy-id': academyId,
+      },
+    });
+
+    const authUser = await verifyRequestAuth(req);
+    expect(authUser.uid).toBe(multiMemUserId);
+    expect(authUser.role).toBe('coach');
+    expect(authUser.academyId).toBe(academyId);
+  });
+
+  it('Case 8: Multi-membership user with X-Academy-Id header for Academy B resolves parent role', async () => {
+    // Request with X-Academy-Id = Academy B → should resolve as parent
+    const req = new Request('http://localhost:3000/api/test', {
+      headers: {
+        cookie: multiMemCookieHeader,
+        'x-academy-id': academyBId,
+      },
+    });
+
+    const authUser = await verifyRequestAuth(req);
+    expect(authUser.uid).toBe(multiMemUserId);
+    expect(authUser.role).toBe('parent');
+    expect(authUser.academyId).toBe(academyBId);
+  });
+
+  it('Case 9: Multi-membership user without X-Academy-Id header gets 409 with academy list', async () => {
+    const req = new Request('http://localhost:3000/api/test', {
+      headers: {
+        cookie: multiMemCookieHeader,
+      },
+    });
+
+    try {
+      await verifyRequestAuth(req);
+      expect.unreachable('Should have thrown AuthError(409)');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AuthError);
+      const authErr = err as AuthError & { academies?: Array<{ id: string; name: string; role: string }> };
+      expect(authErr.statusCode).toBe(409);
+      expect(authErr.academies).toBeDefined();
+      expect(authErr.academies).toHaveLength(2);
+
+      // Verify both academies are in the list with correct roles
+      const academyA = authErr.academies!.find((a) => a.id === academyId);
+      const academyB = authErr.academies!.find((a) => a.id === academyBId);
+      expect(academyA).toBeDefined();
+      expect(academyA!.role).toBe('coach');
+      expect(academyB).toBeDefined();
+      expect(academyB!.role).toBe('parent');
+    }
+  });
+
+  it('Case 10: Multi-membership user with X-Academy-Id for non-member academy gets 403', async () => {
+    const req = new Request('http://localhost:3000/api/test', {
+      headers: {
+        cookie: multiMemCookieHeader,
+        'x-academy-id': 'nonexistent_academy_id_xyz',
+      },
+    });
+
+    try {
+      await verifyRequestAuth(req);
+      expect.unreachable('Should have thrown AuthError(403)');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AuthError);
+      const authErr = err as AuthError;
+      expect(authErr.statusCode).toBe(403);
+      expect(authErr.message).toContain('Not a member of the requested academy');
+    }
+  });
+
   afterAll(async () => {
+    const allEmails = [testEmail, noMemEmail, multiMemEmail];
     await prisma.session.deleteMany({
-      where: { user: { email: { in: [testEmail, noMemEmail] } } },
+      where: { user: { email: { in: allEmails } } },
     });
     await prisma.account.deleteMany({
-      where: { user: { email: { in: [testEmail, noMemEmail] } } },
+      where: { user: { email: { in: allEmails } } },
     });
     await prisma.membership.deleteMany({
-      where: { user: { email: { in: [testEmail, noMemEmail] } } },
+      where: { user: { email: { in: allEmails } } },
     });
     await prisma.user.deleteMany({
-      where: { email: { in: [testEmail, noMemEmail] } },
+      where: { email: { in: allEmails } },
     });
-    if (academyId) {
+    const academyIds = [academyId, academyBId].filter(Boolean);
+    if (academyIds.length > 0) {
       await prisma.academy.deleteMany({
-        where: { id: academyId },
+        where: { id: { in: academyIds } },
       });
     }
     await prisma.$disconnect();
   });
 });
+

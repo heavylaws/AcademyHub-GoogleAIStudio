@@ -21,7 +21,7 @@ import {
   calculateComputedScore,
   deriveRubricGrade,
 } from '@/types/assessment';
-import { useAuth } from '@/lib/authContext';
+import { useAuth, getAcademyHeaders } from '@/lib/authContext';
 import { useAthletesSubscription } from '@/hooks/useAthletesSubscription';
 import {
   evaluateAssessment,
@@ -68,7 +68,7 @@ export default function RapidAssessmentForm({
   coachId = 'coach_marcus_vance',
   coachName = 'Coach Marcus Vance',
 }: RapidAssessmentFormProps) {
-  const { user } = useAuth();
+  const { user, activeAcademyId } = useAuth();
   const { athletes, loading: athletesLoading, error: athletesError } = useAthletesSubscription();
   // Feature flag state
   const [aiPipelineActive, setAiPipelineActive] = useState<boolean>(() => isAIPipelineEnabled());
@@ -250,6 +250,7 @@ export default function RapidAssessmentForm({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...getAcademyHeaders(activeAcademyId),
           },
           credentials: 'include',
           body: JSON.stringify({

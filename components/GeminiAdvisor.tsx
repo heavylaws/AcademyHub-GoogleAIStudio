@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { Sparkles, Bot, Send, Loader2, CheckCircle2 } from 'lucide-react';
-import { useAuth } from '@/lib/authContext';
+import { useAuth, getAcademyHeaders } from '@/lib/authContext';
 
 export default function GeminiAdvisor() {
-  const { user } = useAuth();
+  const { user, activeAcademyId } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [context, setContext] = useState('Vertical Jump & Kinematic Explosiveness');
   const [response, setResponse] = useState<string | null>(null);
@@ -29,6 +29,7 @@ export default function GeminiAdvisor() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...getAcademyHeaders(activeAcademyId),
         },
         credentials: 'include',
         body: JSON.stringify({ prompt, context }),

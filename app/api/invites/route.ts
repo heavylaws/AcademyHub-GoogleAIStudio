@@ -2,19 +2,12 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyRequestAuth } from '@/lib/auth/verifyRequestAuth';
 import { requireRole } from '@/lib/auth/requireRole';
-import { AuthError } from '@/lib/auth/types';
+import { authFailure } from '@/lib/auth/authFailure';
 import { appEnv } from '@/lib/env';
 import { generateInviteToken } from '@/lib/auth/inviteToken';
 import { UserRole } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
-
-function authFailure(err: unknown) {
-  if (err instanceof AuthError) {
-    return NextResponse.json({ error: err.message }, { status: err.statusCode });
-  }
-  return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
-}
 
 export async function GET(request: Request) {
   let user;

@@ -9,7 +9,8 @@ import SchedulingSection from '@/components/scheduling/SchedulingSection';
 import BillingSection from '@/components/billing/BillingSection';
 import AuthSection from '@/components/auth/AuthSection';
 import AthleteProfileSection from '@/components/profiles/AthleteProfileSection';
-import { useAuth } from '@/lib/authContext';
+import AcademySelector from '@/components/AcademySelector';
+import { useAuth, getAcademyHeaders } from '@/lib/authContext';
 import {
   Activity,
   Users,
@@ -55,7 +56,7 @@ interface DashboardMetrics {
 function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, role, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading, activeAcademyId, academies, academyLoading } = useAuth();
   const [users, setUsers] = useState<Array<{ uid: string; email: string; displayName: string | null; role: string }>>([]);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState<boolean>(true);
@@ -63,14 +64,18 @@ function HomePageContent() {
   const [adminBusy, setAdminBusy] = useState(false);
 
   useEffect(() => {
-    if (!user || role !== 'admin') {
+    if (!user || role !== 'admin' || !activeAcademyId) {
       return;
     }
 
     const loadUsers = async () => {
+      setUsers([]);
       try {
         const response = await fetch('/api/users/role', {
           credentials: 'include',
+          headers: {
+            ...getAcademyHeaders(activeAcademyId),
+          },
         });
         if (response.ok) {
           const payload = await response.json();
@@ -82,17 +87,24 @@ function HomePageContent() {
     };
 
     loadUsers();
-  }, [role, user]);
+  }, [role, user, activeAcademyId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activeAcademyId) return;
 
     let isMounted = true;
     const fetchMetrics = async () => {
+      setMetrics(null);
       setMetricsLoading(true);
       setMetricsError(null);
       try {
-        const res = await fetch('/api/dashboard/metrics', { credentials: 'include', cache: 'no-store' });
+        const res = await fetch('/api/dashboard/metrics', { 
+          credentials: 'include', 
+          cache: 'no-store',
+          headers: {
+            ...getAcademyHeaders(activeAcademyId),
+          }
+        });
         if (!isMounted) return;
         if (!res.ok) {
           setMetricsError('Unable to load dashboard metrics from server.');
@@ -120,7 +132,7 @@ function HomePageContent() {
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [user, activeAcademyId]);
 
   const activeTab = searchParams.get('tab') ?? 'dashboard';
   const setActiveTab = (tab: string) => {
@@ -135,7 +147,7 @@ function HomePageContent() {
     try {
       const response = await fetch('/api/users/role', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAcademyHeaders(activeAcademyId) },
         credentials: 'include',
         body: JSON.stringify({ uid, role: nextRole }),
       });
@@ -169,6 +181,10 @@ function HomePageContent() {
         <AuthSection />
       </div>
     );
+  }
+
+  if (!activeAcademyId && academies.length > 1 && !academyLoading) {
+    return <AcademySelector />;
   }
 
   const currentRole = role || 'Authenticated';
