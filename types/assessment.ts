@@ -56,6 +56,7 @@ export interface Assessment {
   data_source: DataSource;
   pipeline_status?: PipelineStatus;
   error_detail?: string;
+  failure_reason?: string;
   quantitative_metrics: QuantitativeMetrics;
   qualitative_observations: QualitativeObservations;
   media_references: MediaReferences;

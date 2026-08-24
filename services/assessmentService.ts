@@ -34,7 +34,15 @@ const assessmentInclude = {
 } as const;
 
 type AssessmentWithRelations = Prisma.AssessmentGetPayload<{ include: typeof assessmentInclude }>;
-type PersistedAssessment = Assessment & { agent_insights?: unknown };
+export type PersistedAssessment = Partial<Assessment> & {
+  athlete_id: string;
+  athlete_name: string;
+  sport: string;
+  exercise_type: string;
+  data_source?: DataSource;
+  computed_score?: number;
+  agent_insights?: unknown;
+};
 
 function jsonValue(value: unknown): Prisma.InputJsonValue {
   return (value ?? {}) as Prisma.InputJsonValue;
@@ -56,6 +64,7 @@ function toAssessment(record: AssessmentWithRelations): Assessment {
       ? pipelineStatusFromPrisma[record.pipelineStatus]
       : undefined,
     error_detail: record.errorDetail || undefined,
+    failure_reason: record.errorDetail ? 'AI model invocation or JSON parsing failed' : undefined,
     quantitative_metrics: record.quantitativeMetrics as unknown as Assessment['quantitative_metrics'],
     qualitative_observations: record.qualitativeObservations as unknown as Assessment['qualitative_observations'],
     media_references: record.mediaReferences as unknown as Assessment['media_references'],
@@ -117,7 +126,7 @@ export async function createAssessment(
       qualitativeObservations: jsonValue(input.qualitative_observations),
       mediaReferences: jsonValue(input.media_references),
       agentInsights: input.agent_insights ? jsonValue(input.agent_insights) : undefined,
-      computedScore: input.computed_score,
+      computedScore: input.computed_score ?? 0,
       rubricGrade: input.rubric_grade,
     },
     include: assessmentInclude,

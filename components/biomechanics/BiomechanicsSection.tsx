@@ -190,7 +190,6 @@ export default function BiomechanicsSection() {
         grading_rubric_sop: selectedSOP,
         coach_id: 'coach_marcus_vance',
         coach_name: 'Coach Marcus Vance',
-        data_source: dataSource,
         quantitative_metrics: {
           valid_reps: validReps,
           avg_depth_angle: avgDepthAngle,

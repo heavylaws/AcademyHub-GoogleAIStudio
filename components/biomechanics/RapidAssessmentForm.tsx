@@ -212,50 +212,82 @@ export default function RapidAssessmentForm({
       }
       const athlete = selectedAthlete;
 
-      // 1. Process assessment through the evaluation service (deterministic or Gemini AI based on feature flag)
-      const evaluated = await evaluateAssessment({
-        athlete_id: athlete.id,
-        athlete_name: athlete.name,
-        parent_email: athlete.parentEmail,
-        sport: selectedSport,
-        exercise_type: selectedExercise,
-        grading_rubric_sop: `${selectedSport} - ${selectedExercise} SOP`,
-        coach_id: coachId,
-        coach_name: coachName,
-        quantitative_metrics: {
-          valid_reps: Number(validReps),
-          duration_seconds: Number(durationSeconds),
-          cadence_reps_per_minute:
-            durationSeconds > 0
-              ? Math.round((validReps / (durationSeconds / 60)) * 10) / 10
-              : undefined,
-        },
-        qualitative_observations: {
-          form_quality_score: Number(formQualityScore),
-          endurance_score: Number(enduranceScore),
-          fault_tags: selectedFaults,
-          coach_notes: coachNotes.trim(),
-        },
-        media_references: {
-          video_storage_path: attachedFile?.storagePath,
-          smart_grid_processed: Boolean(aiPipelineActive),
-        },
-      });
+      let savedAssessment: EvaluatedAssessment;
 
-      // 2. Persist the evaluated result through the authenticated Postgres API.
-      const persistResponse = await fetch('/api/assessments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(evaluated),
-      });
-      const persistData = await persistResponse.json();
-      if (!persistResponse.ok) {
-        throw new Error(persistData.error || 'Failed to persist assessment.');
+      if (aiPipelineActive) {
+        // AI Pipeline mode: evaluate route evaluates AND persists assessment server-side
+        savedAssessment = await evaluateAssessment({
+          athlete_id: athlete.id,
+          athlete_name: athlete.name,
+          parent_email: athlete.parentEmail,
+          sport: selectedSport,
+          exercise_type: selectedExercise,
+          grading_rubric_sop: `${selectedSport} - ${selectedExercise} SOP`,
+          coach_id: coachId,
+          coach_name: coachName,
+          quantitative_metrics: {
+            valid_reps: Number(validReps),
+            duration_seconds: Number(durationSeconds),
+            cadence_reps_per_minute:
+              durationSeconds > 0
+                ? Math.round((validReps / (durationSeconds / 60)) * 10) / 10
+                : undefined,
+          },
+          qualitative_observations: {
+            form_quality_score: Number(formQualityScore),
+            endurance_score: Number(enduranceScore),
+            fault_tags: selectedFaults,
+            coach_notes: coachNotes.trim(),
+          },
+          media_references: {
+            video_storage_path: attachedFile?.storagePath,
+            smart_grid_processed: true,
+          },
+        });
+      } else {
+        // Manual mode: post directly to /api/assessments without computed_score or provenance fields
+        const persistResponse = await fetch('/api/assessments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            athlete_id: athlete.id,
+            athlete_name: athlete.name,
+            parent_email: athlete.parentEmail,
+            sport: selectedSport,
+            exercise_type: selectedExercise,
+            grading_rubric_sop: `${selectedSport} - ${selectedExercise} SOP`,
+            coach_id: coachId,
+            coach_name: coachName,
+            quantitative_metrics: {
+              valid_reps: Number(validReps),
+              duration_seconds: Number(durationSeconds),
+              cadence_reps_per_minute:
+                durationSeconds > 0
+                  ? Math.round((validReps / (durationSeconds / 60)) * 10) / 10
+                  : undefined,
+            },
+            qualitative_observations: {
+              form_quality_score: Number(formQualityScore),
+              endurance_score: Number(enduranceScore),
+              fault_tags: selectedFaults,
+              coach_notes: coachNotes.trim(),
+            },
+            media_references: {
+              video_storage_path: attachedFile?.storagePath,
+              smart_grid_processed: false,
+            },
+          }),
+        });
+
+        const persistData = await persistResponse.json();
+        if (!persistResponse.ok) {
+          throw new Error(persistData.error || 'Failed to persist manual assessment.');
+        }
+        savedAssessment = persistData.assessment as EvaluatedAssessment;
       }
-      const savedAssessment = persistData.assessment as EvaluatedAssessment;
 
       setLastSavedAssessment(savedAssessment);
       setSubmitSuccess(true);
@@ -263,7 +295,7 @@ export default function RapidAssessmentForm({
         onAssessmentSaved(savedAssessment);
       }
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to persist assessment.');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to save assessment.');
     } finally {
       setIsSubmitting(false);
     }
