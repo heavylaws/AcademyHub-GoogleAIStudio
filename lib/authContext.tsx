@@ -130,45 +130,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    void authClient.getSession()
-      .then((result) => {
-        if (active) {
-          if (result.error) {
-            console.error(
-              'Unable to resolve Better Auth session:',
-              getErrorMessage(result.error, 'Unable to load the authentication session.')
-            );
-            setUser(null);
-            setRole(null);
-            return;
-          }
+    async function initSession() {
+      try {
+        const result = await authClient.getSession();
+        if (!active) return;
 
-          const currentUser = toAuthenticatedUser(result.data?.user);
-          setUser(currentUser);
-          setRole(currentUser?.role ?? null);
-          if (currentUser) {
-            fetchAcademies().finally(() => setLoading(false));
-            return;
-          }
+        if (result.error) {
+          console.error(
+            'Unable to resolve Better Auth session:',
+            getErrorMessage(result.error, 'Unable to load the authentication session.')
+          );
+          setUser(null);
+          setRole(null);
+          return;
         }
-      })
-      .catch((error) => {
+
+        const currentUser = toAuthenticatedUser(result.data?.user);
+        setUser(currentUser);
+        setRole(currentUser?.role ?? null);
+
+        if (currentUser) {
+          await fetchAcademies();
+        }
+      } catch (error) {
         if (active) {
           console.error('Unable to resolve Better Auth session:', error);
           setUser(null);
           setRole(null);
         }
-      })
-      .finally(() => {
-        if (active && !loading) {
+      } finally {
+        if (active) {
           setLoading(false);
         }
-      });
+      }
+    }
+
+    void initSession();
 
     return () => {
       active = false;
     };
-  }, [fetchAcademies, loading]);
+  }, [fetchAcademies]);
 
   const signIn = async (email: string, password: string): Promise<AuthenticatedUser> => {
     setLoading(true);
