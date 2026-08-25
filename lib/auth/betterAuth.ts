@@ -1,8 +1,8 @@
 import { betterAuth } from 'better-auth';
 import { APIError } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { prisma } from '@/lib/prisma';
-import { appEnv } from '@/lib/env';
+import { prisma } from '../prisma';
+import { appEnv } from '../env';
 import { internalInviteScope } from './internalInviteScope';
 
 const secret = appEnv.betterAuthSecret;
