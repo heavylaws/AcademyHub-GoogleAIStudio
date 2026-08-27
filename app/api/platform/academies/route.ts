@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePlatformAdmin } from '@/lib/auth/requirePlatformAdmin';
 import { authFailure } from '@/lib/auth/authFailure';
+import { writeAuditLog } from '@/lib/audit/writeAuditLog';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,8 +42,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let user;
   try {
-    await requirePlatformAdmin(request);
+    user = await requirePlatformAdmin(request);
   } catch (err) {
     return authFailure(err);
   }
@@ -68,6 +70,14 @@ export async function POST(request: Request) {
         slug: slug.trim(),
         isActive: true,
       },
+    });
+
+    await writeAuditLog({
+      academyId: null, // platform-level action
+      actorUserId: user.uid,
+      action: 'ACADEMY_CREATED',
+      targetType: 'Academy',
+      targetId: academy.id,
     });
 
     return NextResponse.json({ academy }, { status: 201 });

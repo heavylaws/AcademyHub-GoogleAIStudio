@@ -6,6 +6,7 @@ import { authFailure } from '@/lib/auth/authFailure';
 import { appEnv } from '@/lib/env';
 import { generateInviteToken } from '@/lib/auth/inviteToken';
 import { UserRole } from '@prisma/client';
+import { writeAuditLog } from '@/lib/audit/writeAuditLog';
 
 export const dynamic = 'force-dynamic';
 
@@ -123,6 +124,18 @@ export async function POST(request: Request) {
         tokenHash,
         expiresAt,
         invitedByUserId: user.uid,
+      },
+    });
+
+    await writeAuditLog({
+      academyId: user.academyId,
+      actorUserId: user.uid,
+      action: 'INVITE_CREATED',
+      targetType: 'Invite',
+      targetId: invite.id,
+      metadata: {
+        email: invite.email,
+        role: invite.role,
       },
     });
 

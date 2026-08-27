@@ -11,6 +11,7 @@ const mockFindUnique = vi.fn();
 const mockMembershipUpdate = vi.fn();
 const mockMembershipCount = vi.fn();
 const mockTransaction = vi.fn();
+const mockWriteAuditLog = vi.fn();
 
 vi.mock('@/lib/auth/verifyRequestAuth', () => ({
   verifyRequestAuth: (request: Request) => mockVerifyRequestAuth(request),
@@ -30,6 +31,10 @@ vi.mock('@/lib/prisma', () => ({
     },
     $transaction: (...args: unknown[]) => mockTransaction(...args),
   },
+}));
+
+vi.mock('@/lib/audit/writeAuditLog', () => ({
+  writeAuditLog: (...args: unknown[]) => mockWriteAuditLog(...args),
 }));
 
 describe('/api/users/role authorization rules', () => {
@@ -236,5 +241,49 @@ describe('/api/users/role authorization rules', () => {
     
     expect(response.status).toBe(403);
     expect(mockFindUnique).not.toHaveBeenCalled();
+  });
+
+  it('writes exactly one AuditLog row on successful role change', async () => {
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'admin_1', role: 'admin', academyId: 'academy_a' });
+    mockRequireRole.mockReturnValueOnce(undefined);
+    mockFindUnique.mockResolvedValueOnce({ id: 'mem_1', role: UserRole.PARENT });
+    mockMembershipUpdate.mockResolvedValueOnce({ id: 'mem_1', role: UserRole.COACH });
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/users/role', {
+        method: 'POST',
+        body: JSON.stringify({ uid: 'user_1', role: 'coach' }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockWriteAuditLog).toHaveBeenCalledTimes(1);
+    expect(mockWriteAuditLog).toHaveBeenCalledWith({
+      academyId: 'academy_a',
+      actorUserId: 'admin_1',
+      action: 'ROLE_CHANGED',
+      targetType: 'Membership',
+      targetId: 'mem_1',
+      metadata: {
+        before: UserRole.PARENT,
+        after: UserRole.COACH,
+      },
+    });
+  });
+
+  it('writes NO AuditLog row when role change is rejected (cross-tenant 404)', async () => {
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'admin_1', role: 'admin', academyId: 'academy_a' });
+    mockRequireRole.mockReturnValueOnce(undefined);
+    mockFindUnique.mockResolvedValueOnce(null);
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/users/role', {
+        method: 'POST',
+        body: JSON.stringify({ uid: 'user_b', role: 'coach' }),
+      })
+    );
+
+    expect(response.status).toBe(404);
+    expect(mockWriteAuditLog).not.toHaveBeenCalled();
   });
 });

@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/auth/requireRole';
 import { AuthError } from '@/lib/auth/types';
 import { authFailure } from '@/lib/auth/authFailure';
 import { Prisma, UserRole } from '@prisma/client';
+import { writeAuditLog } from '@/lib/audit/writeAuditLog';
 
 const validRoles = new Set(['admin', 'coach', 'parent']);
 const roleMap = {
@@ -112,6 +113,21 @@ export async function POST(request: Request) {
           where: { id: membership.id },
           data: { role: roleMap[normalizedRole] },
         });
+
+        await writeAuditLog(
+          {
+            academyId: user.academyId,
+            actorUserId: user.uid,
+            action: 'ROLE_CHANGED',
+            targetType: 'Membership',
+            targetId: membership.id,
+            metadata: {
+              before: membership.role,
+              after: roleMap[normalizedRole],
+            },
+          },
+          tx
+        );
       });
 
       return NextResponse.json({ success: true, role: normalizedRole });
@@ -120,6 +136,18 @@ export async function POST(request: Request) {
     await prisma.membership.update({
       where: { id: membership.id },
       data: { role: roleMap[normalizedRole] },
+    });
+
+    await writeAuditLog({
+      academyId: user.academyId,
+      actorUserId: user.uid,
+      action: 'ROLE_CHANGED',
+      targetType: 'Membership',
+      targetId: membership.id,
+      metadata: {
+        before: membership.role,
+        after: roleMap[normalizedRole],
+      },
     });
 
     return NextResponse.json({ success: true, role: normalizedRole });
