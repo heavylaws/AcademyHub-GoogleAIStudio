@@ -21,7 +21,7 @@ vi.mock('@/services/billingAdminService', () => ({
   createInvoiceAdmin: (input: unknown) => mockCreateInvoiceAdmin(input),
 }));
 vi.mock('@/lib/auth/ensureUserRecord', () => ({ ensureUserRecord: vi.fn() }));
-vi.mock('@/lib/prisma', () => ({ prisma: { user: { findUnique: vi.fn() } } }));
+vi.mock('@/lib/prisma', () => ({ prisma: { user: { findUnique: vi.fn() }, membership: { findUnique: vi.fn() } } }));
 
 describe('/api/invoices collection routes', () => {
   beforeEach(() => {

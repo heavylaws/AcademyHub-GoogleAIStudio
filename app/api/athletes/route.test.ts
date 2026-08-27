@@ -9,6 +9,7 @@ const mockEnsureUserRecord = vi.fn();
 const mockFindMany = vi.fn();
 const mockCreate = vi.fn();
 const mockFindUser = vi.fn();
+const mockMembershipFindUnique = vi.fn();
 
 vi.mock('@/lib/auth/verifyRequestAuth', () => ({
   verifyRequestAuth: (request: Request) => mockVerifyRequestAuth(request),
@@ -23,6 +24,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     athlete: { findMany: (args: unknown) => mockFindMany(args), create: (args: unknown) => mockCreate(args) },
     user: { findUnique: (args: unknown) => mockFindUser(args) },
+    membership: { findUnique: (args: unknown) => mockMembershipFindUnique(args) },
   },
 }));
 
@@ -67,7 +69,9 @@ describe('/api/athletes collection routes', () => {
     const coach = { uid: 'coach_1', email: 'coach@example.com', role: 'coach', academyId: 'acad_1' };
     mockVerifyRequestAuth.mockResolvedValueOnce(coach);
     mockEnsureUserRecord.mockResolvedValueOnce(undefined);
-    mockFindUser.mockResolvedValueOnce({ id: 'parent_1' });
+    mockMembershipFindUnique.mockResolvedValueOnce({
+      user: { id: 'parent_1', email: 'parent@example.com' },
+    });
     mockCreate.mockResolvedValueOnce({
       id: 'athlete_1',
       name: 'Athlete One',
@@ -92,8 +96,32 @@ describe('/api/athletes collection routes', () => {
 
     expect(response.status).toBe(201);
     expect(mockEnsureUserRecord).toHaveBeenCalledWith(coach);
-    expect(mockFindUser).toHaveBeenCalledWith({ where: { id: 'parent_1' } });
+    expect(mockMembershipFindUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId_academyId: { userId: 'parent_1', academyId: 'acad_1' } },
+      }),
+    );
     expect(mockCreate).toHaveBeenCalledOnce();
+  });
+
+  it('rejects athlete creation with 400 when parent belongs to another academy', async () => {
+    const coach = { uid: 'coach_1', email: 'coach@example.com', role: 'coach', academyId: 'acad_1' };
+    mockVerifyRequestAuth.mockResolvedValueOnce(coach);
+    mockEnsureUserRecord.mockResolvedValueOnce(undefined);
+    mockMembershipFindUnique.mockResolvedValueOnce(null);
+
+    const response = await POST(new NextRequest('http://localhost/api/athletes', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Athlete One',
+        parentUserId: 'parent_1',
+        parentEmail: 'parent@example.com',
+        sports: [{ sport: 'Football' }],
+      }),
+    }));
+
+    expect(response.status).toBe(400);
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('rejects athlete creation when user has no academy context', async () => {

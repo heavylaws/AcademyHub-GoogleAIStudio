@@ -501,10 +501,12 @@ describe('Auth flow end-to-end integration against live Postgres', () => {
       })
     });
 
-    const response = await acceptInvite(req);
-    expect(response.status).toBe(500);
-
-    prisma.$transaction = originalTransaction;
+    try {
+      const response = await acceptInvite(req);
+      expect(response.status).toBe(500);
+    } finally {
+      prisma.$transaction = originalTransaction;
+    }
 
     const user = await prisma.user.findUnique({ where: { email: inviteEmail } });
     expect(user).toBeNull();

@@ -111,7 +111,7 @@ export async function POST(request: Request) {
     let actualParentEmail = input.parentEmail.trim();
     
     if (input.parentUserId === user.uid) {
-      actualParentEmail = (user as any).email || input.parentEmail.trim();
+      actualParentEmail = user.email || input.parentEmail.trim();
     } else {
       if (!user.academyId) {
         return NextResponse.json(
