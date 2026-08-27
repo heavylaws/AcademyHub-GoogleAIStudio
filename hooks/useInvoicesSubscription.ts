@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@/lib/authContext';
+import { useAuth, getAcademyHeaders } from '@/lib/authContext';
 import { FamilyInvoice } from '@/types/billing';
 
 const POLL_INTERVAL_MS = 12_000;
@@ -23,7 +23,7 @@ export interface UseInvoicesReturn {
 }
 
 export function useInvoicesSubscription(_options: UseInvoicesOptions = {}): UseInvoicesReturn {
-  const { user } = useAuth();
+  const { user, activeAcademyId } = useAuth();
   const [invoices, setInvoices] = useState<FamilyInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,14 +39,26 @@ export function useInvoicesSubscription(_options: UseInvoicesOptions = {}): UseI
     let interval: ReturnType<typeof setInterval> | undefined;
 
     const loadInvoices = async (isInitialLoad: boolean) => {
+      setInvoices([]);
+      setLoading(true);
+      setError(null);
+      setIsPermissionDenied(false);
+      setLastUpdated(null);
+      setIsLive(false);
+      
       try {
         if (!user) {
           throw new Error('Authentication required: Please sign in to view invoices.');
         }
+        
+        if (!activeAcademyId) return;
 
         const response = await fetch('/api/invoices', {
           credentials: 'include',
           cache: 'no-store',
+          headers: {
+            ...getAcademyHeaders(activeAcademyId),
+          },
         });
         const data = await response.json();
 
@@ -80,7 +92,7 @@ export function useInvoicesSubscription(_options: UseInvoicesOptions = {}): UseI
       cancelled = true;
       if (interval) clearInterval(interval);
     };
-  }, [refreshTrigger, user]);
+  }, [refreshTrigger, user, activeAcademyId]);
 
   return {
     invoices,

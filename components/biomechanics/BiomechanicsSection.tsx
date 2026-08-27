@@ -6,7 +6,7 @@ import {
   calculateComputedScore,
   deriveRubricGrade,
 } from '@/types/assessment';
-import { useAuth } from '@/lib/authContext';
+import { useAuth, getAcademyHeaders } from '@/lib/authContext';
 import { useAthletesSubscription } from '@/hooks/useAthletesSubscription';
 import RapidAssessmentForm from './RapidAssessmentForm';
 import LiveAssessmentDashboard from './LiveAssessmentDashboard';
@@ -84,7 +84,7 @@ const sportsConfig: Record<string, SportConfig> = {
 };
 
 export default function BiomechanicsSection() {
-  const { user } = useAuth();
+  const { user, activeAcademyId } = useAuth();
   const { athletes } = useAthletesSubscription();
   const sampleAthletes: AthleteOption[] = athletes.map((athlete) => ({
     id: athlete.id,
@@ -179,7 +179,10 @@ export default function BiomechanicsSection() {
       if (!user || !athleteObj) throw new Error('An authenticated user and athlete are required.');
       const response = await fetch('/api/assessments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAcademyHeaders(activeAcademyId) 
+        },
         credentials: 'include',
         body: JSON.stringify({
         athlete_id: athleteObj.id,

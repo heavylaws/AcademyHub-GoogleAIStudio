@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@/lib/authContext';
+import { useAuth, getAcademyHeaders } from '@/lib/authContext';
 
 export interface AthleteRecord {
   id: string;
@@ -29,7 +29,7 @@ export interface UseAthletesReturn {
 }
 
 export function useAthletesSubscription(): UseAthletesReturn {
-  const { user } = useAuth();
+  const { user, activeAcademyId } = useAuth();
   const [athletes, setAthletes] = useState<AthleteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +45,13 @@ export function useAthletesSubscription(): UseAthletesReturn {
     let interval: ReturnType<typeof setInterval> | undefined;
 
     const loadAthletes = async (isInitialLoad: boolean) => {
+      setAthletes([]);
+      setLoading(true);
+      setError(null);
+      setIsPermissionDenied(false);
+      setLastUpdated(null);
+      setIsLive(false);
+
       try {
         if (!user) {
           const authError = new Error('Authentication required: Please sign in to view athletes.') as Error & { status?: number };
@@ -52,9 +59,14 @@ export function useAthletesSubscription(): UseAthletesReturn {
           throw authError;
         }
 
+        if (!activeAcademyId) return;
+
         const response = await fetch('/api/athletes', {
           credentials: 'include',
           cache: 'no-store',
+          headers: {
+            ...getAcademyHeaders(activeAcademyId),
+          },
         });
         const data = await response.json();
 
@@ -88,7 +100,7 @@ export function useAthletesSubscription(): UseAthletesReturn {
       cancelled = true;
       if (interval) clearInterval(interval);
     };
-  }, [refreshTrigger, user]);
+  }, [refreshTrigger, user, activeAcademyId]);
 
   return { athletes, loading, error, isPermissionDenied, lastUpdated, isLive, refresh };
 }

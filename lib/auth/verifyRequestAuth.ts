@@ -5,12 +5,17 @@ import { AuthError, AuthUser } from './types';
 /**
  * Resolves a Better Auth database-backed session and its authoritative user row.
  *
- * Membership resolution:
- *   - Exactly one membership → use it. Role and academyId come from that row.
+ * Membership resolution with X-Academy-Id header support:
  *   - No memberships → authenticated but unattached. Role and academyId are
  *     undefined; requireRole will reject downstream.
- *   - More than one membership → refuse the request. An active-academy selector
- *     is required before multi-academy users can be supported.
+ *   - Exactly one membership, no header → use it.
+ *   - Exactly one membership, header present → validate it matches; 403 if not.
+ *   - More than one membership, no header → 409 with available academies list.
+ *   - More than one membership, header present → find matching membership; 403 if
+ *     not a member of the requested academy.
+ *
+ * The X-Academy-Id header is treated as a claim, not a credential. It is always
+ * validated against the Membership table on every request.
  */
 export async function verifyRequestAuth(request: Request): Promise<AuthUser> {
   try {
@@ -28,7 +33,11 @@ export async function verifyRequestAuth(request: Request): Promise<AuthUser> {
         id: true,
         email: true,
         memberships: {
-          select: { role: true, academyId: true },
+          select: {
+            role: true,
+            academyId: true,
+            academy: { select: { name: true } },
+          },
         },
       },
     });
@@ -38,24 +47,69 @@ export async function verifyRequestAuth(request: Request): Promise<AuthUser> {
     }
 
     const { memberships } = user;
+    const requestedAcademyId = request.headers.get('x-academy-id');
 
-    if (memberships.length > 1) {
-      throw new AuthError(
-        'Multiple academy memberships found. An active-academy selector is required to resolve tenant context.',
-        403,
-      );
+    // --- 0 memberships: unattached user ---
+    if (memberships.length === 0) {
+      return {
+        uid: user.id,
+        email: user.email,
+        role: undefined,
+        academyId: undefined,
+        claims: { role: undefined },
+      };
     }
 
-    const membership = memberships[0];
-    const role = membership?.role?.toLowerCase();
-    const academyId = membership?.academyId;
+    // --- 1 membership ---
+    if (memberships.length === 1) {
+      const membership = memberships[0];
 
+      // If header is present, validate it matches the single membership
+      if (requestedAcademyId && requestedAcademyId !== membership.academyId) {
+        throw new AuthError('Forbidden: Not a member of the requested academy', 403);
+      }
+
+      const role = membership.role?.toLowerCase();
+      return {
+        uid: user.id,
+        email: user.email,
+        role,
+        academyId: membership.academyId,
+        claims: { role },
+      };
+    }
+
+    // --- >1 memberships ---
+    if (!requestedAcademyId) {
+      // No header → 409 with academy list for the selector UI
+      const academies = memberships.map((m) => ({
+        id: m.academyId,
+        name: m.academy.name,
+        role: m.role?.toLowerCase(),
+      }));
+
+      const error = new AuthError(
+        'Multiple academy memberships found. Select an academy to continue.',
+        409,
+      );
+      // Attach academies list as a property for the route handler to include in the response
+      (error as AuthError & { academies: typeof academies }).academies = academies;
+      throw error;
+    }
+
+    // Header present → find matching membership
+    const matched = memberships.find((m) => m.academyId === requestedAcademyId);
+
+    if (!matched) {
+      throw new AuthError('Forbidden: Not a member of the requested academy', 403);
+    }
+
+    const role = matched.role?.toLowerCase();
     return {
       uid: user.id,
       email: user.email,
       role,
-      academyId,
-      // Vestigial compatibility field for existing authorization helpers.
+      academyId: matched.academyId,
       claims: { role },
     };
   } catch (error) {

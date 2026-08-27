@@ -23,9 +23,18 @@ export interface AuthContextType {
   signIn: (email: string, password: string) => Promise<AuthenticatedUser>;
   register: (email: string, password: string, displayName?: string) => Promise<AuthenticatedUser>;
   signOut: () => Promise<void>;
+  academies: Array<{ id: string; name: string; slug: string; role: string }>;
+  activeAcademyId: string | null;
+  academyLoading: boolean;
+  setActiveAcademy: (id: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function getAcademyHeaders(academyId: string | null): Record<string, string> {
+  if (!academyId) return {};
+  return { 'X-Academy-Id': academyId };
+}
 
 function getErrorMessage(error: { message?: string } | null, fallback: string): string {
   return error?.message || fallback;
@@ -60,6 +69,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [academies, setAcademies] = useState<Array<{ id: string; name: string; slug: string; role: string }>>([]);
+  const [activeAcademyId, setActiveAcademyId] = useState<string | null>(null);
+  const [academyLoading, setAcademyLoading] = useState<boolean>(false);
+
+  const setActiveAcademy = useCallback((id: string) => {
+    localStorage.setItem('academyhub_activeAcademyId', id);
+    setActiveAcademyId(id);
+  }, []);
+
+  const fetchAcademies = useCallback(async () => {
+    setAcademyLoading(true);
+    try {
+      const res = await fetch('/api/me/academies', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        const loadedAcademies = data.academies || [];
+        setAcademies(loadedAcademies);
+        
+        if (loadedAcademies.length === 1) {
+          setActiveAcademy(loadedAcademies[0].id);
+        } else if (loadedAcademies.length > 1) {
+          const stored = localStorage.getItem('academyhub_activeAcademyId');
+          if (stored && loadedAcademies.some((a: any) => a.id === stored)) {
+            setActiveAcademyId(stored);
+          } else {
+            setActiveAcademyId(null);
+          }
+        } else {
+          setActiveAcademyId(null);
+        }
+      } else {
+        setAcademies([]);
+        setActiveAcademyId(null);
+      }
+    } catch (e) {
+      console.error('Failed to load academies', e);
+      setAcademies([]);
+      setActiveAcademyId(null);
+    } finally {
+      setAcademyLoading(false);
+    }
+  }, [setActiveAcademy]);
 
   const refreshSession = useCallback(async (): Promise<AuthenticatedUser | null> => {
     const result = await authClient.getSession();
@@ -70,47 +121,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const currentUser = toAuthenticatedUser(result.data?.user);
     setUser(currentUser);
     setRole(currentUser?.role ?? null);
+    if (currentUser) {
+      await fetchAcademies();
+    }
     return currentUser;
-  }, []);
+  }, [fetchAcademies]);
 
   useEffect(() => {
     let active = true;
 
-    void authClient.getSession()
-      .then((result) => {
-        if (active) {
-          if (result.error) {
-            console.error(
-              'Unable to resolve Better Auth session:',
-              getErrorMessage(result.error, 'Unable to load the authentication session.')
-            );
-            setUser(null);
-            setRole(null);
-            return;
-          }
+    async function initSession() {
+      try {
+        const result = await authClient.getSession();
+        if (!active) return;
 
-          const currentUser = toAuthenticatedUser(result.data?.user);
-          setUser(currentUser);
-          setRole(currentUser?.role ?? null);
+        if (result.error) {
+          console.error(
+            'Unable to resolve Better Auth session:',
+            getErrorMessage(result.error, 'Unable to load the authentication session.')
+          );
+          setUser(null);
+          setRole(null);
+          return;
         }
-      })
-      .catch((error) => {
+
+        const currentUser = toAuthenticatedUser(result.data?.user);
+        setUser(currentUser);
+        setRole(currentUser?.role ?? null);
+
+        if (currentUser) {
+          await fetchAcademies();
+        }
+      } catch (error) {
         if (active) {
           console.error('Unable to resolve Better Auth session:', error);
           setUser(null);
           setRole(null);
         }
-      })
-      .finally(() => {
+      } finally {
         if (active) {
           setLoading(false);
         }
-      });
+      }
+    }
+
+    void initSession();
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [fetchAcademies]);
 
   const signIn = async (email: string, password: string): Promise<AuthenticatedUser> => {
     setLoading(true);
@@ -168,13 +228,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(null);
       setRole(null);
+      setAcademies([]);
+      setActiveAcademyId(null);
+      localStorage.removeItem('academyhub_activeAcademyId');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signIn, register, signOut }}>
+    <AuthContext.Provider value={{ user, role, loading, signIn, register, signOut, academies, activeAcademyId, academyLoading, setActiveAcademy }}>
       {children}
     </AuthContext.Provider>
   );

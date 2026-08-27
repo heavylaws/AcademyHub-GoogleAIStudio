@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@/lib/authContext';
+import { useAuth, getAcademyHeaders } from '@/lib/authContext';
 import { Assessment } from '@/types/assessment';
 
 const POLL_INTERVAL_MS = 12_000;
@@ -24,7 +24,7 @@ export interface UseAssessmentsReturn {
 }
 
 export function useAssessmentsSubscription(options: UseAssessmentsOptions = {}): UseAssessmentsReturn {
-  const { user } = useAuth();
+  const { user, activeAcademyId } = useAuth();
   const { athleteId = 'all', sport = 'all', limitCount } = options;
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +41,13 @@ export function useAssessmentsSubscription(options: UseAssessmentsOptions = {}):
     let interval: ReturnType<typeof setInterval> | undefined;
 
     const loadAssessments = async (isInitialLoad: boolean) => {
+      setAssessments([]);
+      setLoading(true);
+      setError(null);
+      setIsPermissionDenied(false);
+      setLastUpdated(null);
+      setIsLive(false);
+      
       try {
         if (!user) {
           const authError = new Error('Authentication required: Please sign in to view assessments.') as Error & { status?: number };
@@ -48,9 +55,14 @@ export function useAssessmentsSubscription(options: UseAssessmentsOptions = {}):
           throw authError;
         }
 
+        if (!activeAcademyId) return;
+
         const response = await fetch('/api/assessments', {
           credentials: 'include',
           cache: 'no-store',
+          headers: {
+            ...getAcademyHeaders(activeAcademyId),
+          },
         });
         const data = await response.json();
         if (!response.ok) {
@@ -86,7 +98,7 @@ export function useAssessmentsSubscription(options: UseAssessmentsOptions = {}):
       cancelled = true;
       if (interval) clearInterval(interval);
     };
-  }, [athleteId, limitCount, refreshTrigger, sport, user]);
+  }, [athleteId, limitCount, refreshTrigger, sport, user, activeAcademyId]);
 
   return { assessments, loading, error, isPermissionDenied, lastUpdated, isLive, totalCount: assessments.length, refresh };
 }

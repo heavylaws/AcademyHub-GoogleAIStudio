@@ -76,7 +76,11 @@ describe('Authorization middleware', () => {
           id: true,
           email: true,
           memberships: {
-            select: { role: true, academyId: true },
+            select: {
+              role: true,
+              academyId: true,
+              academy: { select: { name: true } },
+            },
           },
         },
       });
@@ -161,7 +165,7 @@ describe('Authorization middleware', () => {
       expect(user.academyId).toBeUndefined();
     });
 
-    it('throws AuthError 403 when user has multiple memberships', async () => {
+    it('throws AuthError 409 when user has multiple memberships', async () => {
       mockGetSession.mockResolvedValueOnce({
         user: { id: 'multi_1' },
       });
@@ -169,8 +173,8 @@ describe('Authorization middleware', () => {
         id: 'multi_1',
         email: 'multi@example.com',
         memberships: [
-          { role: 'ADMIN', academyId: 'acad_1' },
-          { role: 'PARENT', academyId: 'acad_2' },
+          { role: 'ADMIN', academyId: 'acad_1', academy: { name: 'Academy A' } },
+          { role: 'PARENT', academyId: 'acad_2', academy: { name: 'Academy B' } },
         ],
       });
 
@@ -179,8 +183,8 @@ describe('Authorization middleware', () => {
       });
 
       await expect(verifyRequestAuth(request)).rejects.toMatchObject({
-        message: 'Multiple academy memberships found. An active-academy selector is required to resolve tenant context.',
-        statusCode: 403,
+        message: 'Multiple academy memberships found. Select an academy to continue.',
+        statusCode: 409,
       });
     });
 

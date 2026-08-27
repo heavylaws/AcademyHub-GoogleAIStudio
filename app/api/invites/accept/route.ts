@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth/betterAuth';
-import { verifyRequestAuth } from '@/lib/auth/verifyRequestAuth';
 import { hashInviteToken } from '@/lib/auth/inviteToken';
 import { internalInviteScope } from '@/lib/auth/internalInviteScope';
 
@@ -40,30 +39,41 @@ export async function POST(request: Request) {
 
     const existingUser = await prisma.user.findUnique({
       where: { email: invite.email },
-      include: { memberships: true },
+      select: { id: true, email: true },
     });
 
     if (existingUser) {
-      // Case 1: User exists and already has a membership -> reject 403
-      if (existingUser.memberships.length > 0) {
+      // Case 1: User already has a membership in the TARGET academy → reject
+      const existingMembership = await prisma.membership.findUnique({
+        where: {
+          userId_academyId: {
+            userId: existingUser.id,
+            academyId: invite.academyId,
+          },
+        },
+      });
+
+      if (existingMembership) {
         return NextResponse.json(
-          { error: 'This account already belongs to an academy. Multi-academy access is not yet supported.' },
-          { status: 403 },
+          { error: 'This account is already a member of this academy.' },
+          { status: 409 },
         );
       }
 
-      // Case 2: User exists and has no membership -> require authenticated session for that email
-      let sessionUser;
+      // Case 2: User exists but not in this academy → require authenticated session
+      // Use session-only auth (not verifyRequestAuth) to avoid the 409 that
+      // multi-membership users would get without an X-Academy-Id header.
+      let sessionUserId: string | undefined;
       try {
-        sessionUser = await verifyRequestAuth(request);
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (session?.user?.id) {
+          sessionUserId = session.user.id;
+        }
       } catch {
-        return NextResponse.json(
-          { error: 'Must be signed in as the invited user to accept this invitation.' },
-          { status: 403 },
-        );
+        // Session resolution failed
       }
 
-      if (!sessionUser.email || sessionUser.email.toLowerCase() !== invite.email.toLowerCase()) {
+      if (!sessionUserId || sessionUserId !== existingUser.id) {
         return NextResponse.json(
           { error: 'Must be signed in as the invited user to accept this invitation.' },
           { status: 403 },
@@ -74,7 +84,7 @@ export async function POST(request: Request) {
       await prisma.$transaction(async (tx) => {
         await tx.membership.create({
           data: {
-            userId: sessionUser.uid,
+            userId: sessionUserId,
             academyId: invite.academyId,
             role: invite.role,
           },
@@ -87,7 +97,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         success: true,
-        user: { id: sessionUser.uid, email: invite.email },
+        user: { id: sessionUserId, email: invite.email },
         academyId: invite.academyId,
         role: String(invite.role).toLowerCase(),
       });
@@ -123,19 +133,29 @@ export async function POST(request: Request) {
 
     const userId = createdAuth.user.id;
 
-    await prisma.$transaction(async (tx) => {
-      await tx.membership.create({
-        data: {
-          userId,
-          academyId: invite.academyId,
-          role: invite.role,
-        },
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.membership.create({
+          data: {
+            userId,
+            academyId: invite.academyId,
+            role: invite.role,
+          },
+        });
+        await tx.invite.update({
+          where: { id: invite.id },
+          data: { acceptedAt: new Date() },
+        });
       });
-      await tx.invite.update({
-        where: { id: invite.id },
-        data: { acceptedAt: new Date() },
-      });
-    });
+    } catch (err) {
+      console.error(`Error in post-signup transaction for user ${userId}. Rolling back user creation.`, err);
+      try {
+        await prisma.user.delete({ where: { id: userId } });
+      } catch (cleanupErr) {
+        console.error(`FAILED to roll back (delete) user ${userId}. Manual intervention required.`, cleanupErr);
+      }
+      return NextResponse.json({ error: 'Failed to accept invitation' }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,

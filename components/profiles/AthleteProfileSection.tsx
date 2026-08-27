@@ -20,14 +20,14 @@ import {
 } from 'lucide-react';
 import { useAssessmentsSubscription } from '@/hooks/useAssessmentsSubscription';
 import { AthleteRecord, useAthletesSubscription } from '@/hooks/useAthletesSubscription';
-import { useAuth } from '@/lib/authContext';
+import { useAuth, getAcademyHeaders } from '@/lib/authContext';
 import PerformanceTimelineChart from '@/components/biomechanics/PerformanceTimelineChart';
 import DevelopmentalRadarChart from '@/components/biomechanics/DevelopmentalRadarChart';
 
 type StudentAthleteMeta = AthleteRecord;
 
 export default function AthleteProfileSection() {
-  const { user } = useAuth();
+  const { user, activeAcademyId } = useAuth();
   const {
     athletes: athletesList,
     loading: athletesLoading,
@@ -71,6 +71,7 @@ export default function AthleteProfileSection() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...getAcademyHeaders(activeAcademyId),
         },
         credentials: 'include',
         body: JSON.stringify({

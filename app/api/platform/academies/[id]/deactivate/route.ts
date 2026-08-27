@@ -1,18 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePlatformAdmin } from '@/lib/auth/requirePlatformAdmin';
-import { AuthError } from '@/lib/auth/types';
+import { authFailure } from '@/lib/auth/authFailure';
 
 export const dynamic = 'force-dynamic';
 
 type RouteContext = { params: Promise<{ id: string }> };
-
-function authFailure(err: unknown) {
-  if (err instanceof AuthError) {
-    return NextResponse.json({ error: err.message }, { status: err.statusCode });
-  }
-  return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
-}
 
 export async function POST(request: Request, context: RouteContext) {
   const { id } = await context.params;

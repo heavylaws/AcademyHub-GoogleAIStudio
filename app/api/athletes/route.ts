@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyRequestAuth } from '@/lib/auth/verifyRequestAuth';
 import { requireRole } from '@/lib/auth/requireRole';
-import { AuthError } from '@/lib/auth/types';
+import { authFailure } from '@/lib/auth/authFailure';
 import { ensureUserRecord } from '@/lib/auth/ensureUserRecord';
 
 interface CreateAthleteInput {
@@ -17,13 +17,6 @@ interface CreateAthleteInput {
 }
 
 export const dynamic = 'force-dynamic';
-
-function authFailure(err: unknown) {
-  if (err instanceof AuthError) {
-    return NextResponse.json({ error: err.message }, { status: err.statusCode });
-  }
-  return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
-}
 
 function ageFromDob(dob: string | null): number | null {
   if (!dob) return null;
@@ -115,14 +108,35 @@ export async function POST(request: Request) {
       );
     }
 
-    if (input.parentUserId !== user.uid) {
-      const targetParent = await prisma.user.findUnique({ where: { id: input.parentUserId } });
-      if (!targetParent) {
+    let actualParentEmail = input.parentEmail.trim();
+    
+    if (input.parentUserId === user.uid) {
+      actualParentEmail = user.email || input.parentEmail.trim();
+    } else {
+      if (!user.academyId) {
         return NextResponse.json(
-          { error: 'Parent account must sign in before an athlete can be registered for it.' },
-          { status: 400 }
+          { error: 'No academy context. User must belong to an academy to create athletes.' },
+          { status: 400 },
         );
       }
+      
+      const parentMembership = await prisma.membership.findUnique({
+        where: {
+          userId_academyId: {
+            userId: input.parentUserId,
+            academyId: user.academyId,
+          },
+        },
+        select: { user: { select: { id: true, email: true } } },
+      });
+
+      if (!parentMembership) {
+        return NextResponse.json(
+          { error: 'Parent account must be a member of this academy.' },
+          { status: 400 },
+        );
+      }
+      actualParentEmail = parentMembership.user.email;
     }
 
     if (!user.academyId) {
@@ -138,7 +152,7 @@ export async function POST(request: Request) {
         name: input.name.trim(),
         dob: input.dob || null,
         parentUserId: input.parentUserId,
-        parentEmail: input.parentEmail.trim(),
+        parentEmail: actualParentEmail,
         emergencyContact: input.emergencyContact || null,
         guardianConsent: input.guardianConsent ?? true,
         guardianConsentDate: input.guardianConsentDate || new Date().toISOString(),

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { appEnv } from '@/lib/env';
+import { appEnv } from './env';
 
 /**
  * Global Prisma Client singleton instance for Next.js.
