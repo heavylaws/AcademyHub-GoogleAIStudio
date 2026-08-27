@@ -65,11 +65,26 @@ export async function POST(request: Request) {
     await ensureUserRecord(user);
     const parentUserId = body.parentUserId || user.uid;
     if (parentUserId !== user.uid) {
-      const targetParent = await prisma.user.findUnique({ where: { id: parentUserId } });
-      if (!targetParent) {
+      if (!user.academyId) {
         return NextResponse.json(
-          { error: 'Parent account must sign in before an invoice can be created for it.' },
-          { status: 400 }
+          { error: 'No academy context. User must belong to an academy to create invoices.' },
+          { status: 400 },
+        );
+      }
+      const parentMembership = await prisma.membership.findUnique({
+        where: {
+          userId_academyId: {
+            userId: parentUserId,
+            academyId: user.academyId,
+          },
+        },
+        select: { user: { select: { id: true, email: true } } },
+      });
+
+      if (!parentMembership) {
+        return NextResponse.json(
+          { error: 'Parent account must be a member of this academy.' },
+          { status: 400 },
         );
       }
     }

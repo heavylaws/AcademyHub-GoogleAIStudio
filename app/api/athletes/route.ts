@@ -108,14 +108,35 @@ export async function POST(request: Request) {
       );
     }
 
-    if (input.parentUserId !== user.uid) {
-      const targetParent = await prisma.user.findUnique({ where: { id: input.parentUserId } });
-      if (!targetParent) {
+    let actualParentEmail = input.parentEmail.trim();
+    
+    if (input.parentUserId === user.uid) {
+      actualParentEmail = (user as any).email || input.parentEmail.trim();
+    } else {
+      if (!user.academyId) {
         return NextResponse.json(
-          { error: 'Parent account must sign in before an athlete can be registered for it.' },
-          { status: 400 }
+          { error: 'No academy context. User must belong to an academy to create athletes.' },
+          { status: 400 },
         );
       }
+      
+      const parentMembership = await prisma.membership.findUnique({
+        where: {
+          userId_academyId: {
+            userId: input.parentUserId,
+            academyId: user.academyId,
+          },
+        },
+        select: { user: { select: { id: true, email: true } } },
+      });
+
+      if (!parentMembership) {
+        return NextResponse.json(
+          { error: 'Parent account must be a member of this academy.' },
+          { status: 400 },
+        );
+      }
+      actualParentEmail = parentMembership.user.email;
     }
 
     if (!user.academyId) {
@@ -131,7 +152,7 @@ export async function POST(request: Request) {
         name: input.name.trim(),
         dob: input.dob || null,
         parentUserId: input.parentUserId,
-        parentEmail: input.parentEmail.trim(),
+        parentEmail: actualParentEmail,
         emergencyContact: input.emergencyContact || null,
         guardianConsent: input.guardianConsent ?? true,
         guardianConsentDate: input.guardianConsentDate || new Date().toISOString(),

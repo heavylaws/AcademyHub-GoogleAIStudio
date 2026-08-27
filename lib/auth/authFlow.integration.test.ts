@@ -318,6 +318,198 @@ describe('Auth flow end-to-end integration against live Postgres', () => {
     }
   });
 
+  it('Case 11: Admin of Academy A creating athlete for parent whose only membership is in Academy B -> 400', async () => {
+    const { POST: createAthlete } = await import('@/app/api/athletes/route');
+    const { NextRequest } = await import('next/server');
+
+    const adminAEmail = `admin_a_${Date.now()}@example.com`;
+    const adminA = await internalInviteScope.run(true, async () => {
+      return await auth.api.signUpEmail({ body: { email: adminAEmail, password, name: 'Admin A' }});
+    });
+    await prisma.membership.create({
+      data: { userId: adminA.user.id, academyId: academyId, role: 'ADMIN' }
+    });
+    const signInA = await auth.api.signInEmail({ body: { email: adminAEmail, password }, returnHeaders: true });
+    const adminACookie = signInA.headers.get('set-cookie')!.split(';')[0];
+
+    const parentBEmail = `parent_b_${Date.now()}@example.com`;
+    const parentB = await internalInviteScope.run(true, async () => {
+      return await auth.api.signUpEmail({ body: { email: parentBEmail, password, name: 'Parent B' }});
+    });
+    await prisma.membership.create({
+      data: { userId: parentB.user.id, academyId: academyBId, role: 'PARENT' }
+    });
+
+    const athleteCountBefore = await prisma.athlete.count();
+
+    const req = new NextRequest('http://localhost:3000/api/athletes', {
+      method: 'POST',
+      headers: { cookie: adminACookie, 'x-academy-id': academyId },
+      body: JSON.stringify({
+        name: 'Test Athlete',
+        parentUserId: parentB.user.id,
+        parentEmail: 'fake@example.com'
+      })
+    });
+
+    const response = await createAthlete(req);
+    expect(response.status).toBe(400);
+
+    const athleteCountAfter = await prisma.athlete.count();
+    expect(athleteCountAfter).toBe(athleteCountBefore);
+  });
+
+  it('Case 12: Admin of Academy A creating athlete for parent who IS a member of Academy A -> 201', async () => {
+    const { POST: createAthlete } = await import('@/app/api/athletes/route');
+    const { NextRequest } = await import('next/server');
+
+    const parentAEmail = `parent_a_${Date.now()}@example.com`;
+    const parentA = await internalInviteScope.run(true, async () => {
+      return await auth.api.signUpEmail({ body: { email: parentAEmail, password, name: 'Parent A' }});
+    });
+    await prisma.membership.create({
+      data: { userId: parentA.user.id, academyId: academyId, role: 'PARENT' }
+    });
+
+    const adminAUser = await prisma.user.findFirst({ where: { memberships: { some: { role: 'ADMIN', academyId } } } });
+    const signInA = await auth.api.signInEmail({ body: { email: adminAUser!.email, password }, returnHeaders: true });
+    const adminACookie = signInA.headers.get('set-cookie')!.split(';')[0];
+
+    const req = new NextRequest('http://localhost:3000/api/athletes', {
+      method: 'POST',
+      headers: { cookie: adminACookie, 'x-academy-id': academyId },
+      body: JSON.stringify({
+        name: 'Valid Athlete',
+        parentUserId: parentA.user.id,
+        parentEmail: 'fake@example.com'
+      })
+    });
+
+    const response = await createAthlete(req);
+    expect(response.status).toBe(201);
+
+    const data = await response.json();
+    expect(data.athlete.parentEmail).toBe(parentAEmail);
+  });
+
+  it('Case 13: Admin of Academy A creating invoice for parent whose only membership is in Academy B -> 400', async () => {
+    const { POST: createInvoice } = await import('@/app/api/invoices/route');
+    const { NextRequest } = await import('next/server');
+
+    const parentB = await prisma.user.findFirst({ where: { memberships: { some: { role: 'PARENT', academyId: academyBId }, none: { academyId } } } });
+    const adminAUser = await prisma.user.findFirst({ where: { memberships: { some: { role: 'ADMIN', academyId } } } });
+    const signInA = await auth.api.signInEmail({ body: { email: adminAUser!.email, password }, returnHeaders: true });
+    const adminACookie = signInA.headers.get('set-cookie')!.split(';')[0];
+
+    const invoiceCountBefore = await prisma.invoice.count();
+
+    process.env.BILLING_ENABLED = 'true';
+    const req = new NextRequest('http://localhost:3000/api/invoices', {
+      method: 'POST',
+      headers: { cookie: adminACookie, 'x-academy-id': academyId },
+      body: JSON.stringify({
+        amount: 100,
+        currency: 'USD',
+        dueDate: new Date().toISOString(),
+        description: 'Test Invoice',
+        status: 'OPEN',
+        parentUserId: parentB!.id,
+        parentName: 'Test Parent B',
+        parentEmail: 'parentb@example.com',
+        subtotal: 100,
+        netTotal: 100,
+        paymentSchedule: 'monthly',
+        children: [],
+        installmentBreakdown: [],
+      })
+    });
+
+    const response = await createInvoice(req);
+    expect(response.status).toBe(400);
+
+    const invoiceCountAfter = await prisma.invoice.count();
+    expect(invoiceCountAfter).toBe(invoiceCountBefore);
+    delete process.env.BILLING_ENABLED;
+  });
+
+  it('Case 14: Admin of Academy A creating invoice for parent who IS a member of Academy A -> 201', async () => {
+    const { POST: createInvoice } = await import('@/app/api/invoices/route');
+    const { NextRequest } = await import('next/server');
+
+    const parentA = await prisma.user.findFirst({ where: { memberships: { some: { role: 'PARENT', academyId } } } });
+    const adminAUser = await prisma.user.findFirst({ where: { memberships: { some: { role: 'ADMIN', academyId } } } });
+    const signInA = await auth.api.signInEmail({ body: { email: adminAUser!.email, password }, returnHeaders: true });
+    const adminACookie = signInA.headers.get('set-cookie')!.split(';')[0];
+
+    process.env.BILLING_ENABLED = 'true';
+    const req = new NextRequest('http://localhost:3000/api/invoices', {
+      method: 'POST',
+      headers: { cookie: adminACookie, 'x-academy-id': academyId },
+      body: JSON.stringify({
+        amount: 100,
+        currency: 'USD',
+        dueDate: new Date().toISOString(),
+        description: 'Test Invoice',
+        status: 'OPEN',
+        parentUserId: parentA!.id,
+        parentName: 'Test Parent A',
+        parentEmail: 'parenta@example.com',
+        subtotal: 100,
+        netTotal: 100,
+        paymentSchedule: 'monthly',
+        children: [],
+        installmentBreakdown: [],
+      })
+    });
+
+    const response = await createInvoice(req);
+    expect(response.status).toBe(201);
+    delete process.env.BILLING_ENABLED;
+  });
+
+  it('Case 15: Invite acceptance transaction failure cleans up orphaned user', async () => {
+    const { POST: acceptInvite } = await import('@/app/api/invites/accept/route');
+    const { NextRequest } = await import('next/server');
+    const { vi } = await import('vitest');
+    const { generateInviteToken } = await import('@/lib/auth/inviteToken');
+
+    const adminAUser = await prisma.user.findFirst({ where: { memberships: { some: { role: 'ADMIN', academyId } } } });
+    
+    const inviteEmail = `invite_failure_${Date.now()}@example.com`;
+    const { rawToken, tokenHash } = generateInviteToken();
+
+    const invite = await prisma.invite.create({
+      data: {
+        email: inviteEmail,
+        academyId,
+        role: 'PARENT',
+        tokenHash: tokenHash,
+        expiresAt: new Date(Date.now() + 1000000),
+        invitedByUserId: adminAUser!.id,
+      }
+    });
+
+    const originalTransaction = prisma.$transaction;
+    prisma.$transaction = vi.fn().mockRejectedValue(new Error('Simulated transaction failure'));
+
+    const req = new NextRequest('http://localhost:3000/api/invites/accept', {
+      method: 'POST',
+      body: JSON.stringify({
+        token: rawToken,
+        password: 'ValidPassword123!',
+        displayName: 'Test User'
+      })
+    });
+
+    const response = await acceptInvite(req);
+    expect(response.status).toBe(500);
+
+    prisma.$transaction = originalTransaction;
+
+    const user = await prisma.user.findUnique({ where: { email: inviteEmail } });
+    expect(user).toBeNull();
+  });
+
   afterAll(async () => {
     const allEmails = [testEmail, noMemEmail, multiMemEmail];
     await prisma.session.deleteMany({

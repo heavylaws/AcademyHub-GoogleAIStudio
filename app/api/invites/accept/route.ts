@@ -133,19 +133,29 @@ export async function POST(request: Request) {
 
     const userId = createdAuth.user.id;
 
-    await prisma.$transaction(async (tx) => {
-      await tx.membership.create({
-        data: {
-          userId,
-          academyId: invite.academyId,
-          role: invite.role,
-        },
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.membership.create({
+          data: {
+            userId,
+            academyId: invite.academyId,
+            role: invite.role,
+          },
+        });
+        await tx.invite.update({
+          where: { id: invite.id },
+          data: { acceptedAt: new Date() },
+        });
       });
-      await tx.invite.update({
-        where: { id: invite.id },
-        data: { acceptedAt: new Date() },
-      });
-    });
+    } catch (err) {
+      console.error(`Error in post-signup transaction for user ${userId}. Rolling back user creation.`, err);
+      try {
+        await prisma.user.delete({ where: { id: userId } });
+      } catch (cleanupErr) {
+        console.error(`FAILED to roll back (delete) user ${userId}. Manual intervention required.`, cleanupErr);
+      }
+      return NextResponse.json({ error: 'Failed to accept invitation' }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,

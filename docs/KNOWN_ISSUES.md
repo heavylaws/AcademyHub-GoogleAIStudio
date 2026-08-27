@@ -11,10 +11,10 @@ This document lists open issues, architectural limitations, and known bugs in Ac
 - **Resolution**: `gemini-3.6-flash` was confirmed valid via a live API execution using `@google/genai ^2.4.0` with `GEMINI_API_KEY`, returning: `VALID: Pong! 🏓 How can I help you today?`. Model identifier consolidated into `DEFAULT_AI_MODEL` in `lib/env.ts` with non-blocking startup validation in `instrumentation.ts`.
 - **Historical Context**: The identifier remained unverified through Phases B-F due to missing local API keys, with routes degrading gracefully to deterministic scoring.
 
-### 2. Multi-Membership Users Hard-Blocked at Authentication
-- **Description**: `verifyRequestAuth` queries `Membership` records for a user. If a user belongs to more than 1 academy, `verifyRequestAuth` throws an `AuthError(403)` stating multi-academy access is not yet implemented.
-- **Impact**: Users with multiple memberships cannot access any academy route.
-- **Remediation**: Implement a tenant selection mechanism (e.g., `x-academy-id` header or session state) allowing multi-membership users to select their active academy context.
+### 2. [RESOLVED] Multi-Membership Users Hard-Blocked at Authentication
+- **Date Resolved**: 2026-08-27
+- **Resolution**: Implemented `X-Academy-Id` header resolution in `verifyRequestAuth`. When a user has multiple memberships and omits the header, the API returns a `409 Conflict` containing a list of their authorized academies. Additionally, invite acceptance (`POST /api/invites/accept`) was updated with an atomic rollback mechanism to clean up orphaned `User` and `Account` rows on transaction failure.
+- **Historical Context**: The multi-tenant architecture initially threw a `403` to block multi-academy users.
 
 ### 3. Billing Routes Gated Off Due to Client-Side Money Calculation & Installment Defect
 - **Description**:
@@ -23,10 +23,10 @@ This document lists open issues, architectural limitations, and known bugs in Ac
 - **Impact**: Billing routes are gated off (`BILLING_ENABLED=false`) returning HTTP 503 to prevent financial errors.
 - **Remediation**: Rewrite `billingService.ts` to perform authoritative server-side subtotal, discount, tax, and installment calculations before re-enabling routes.
 
-### 4. `POST /api/athletes` Parent Lookup Resolves Globally Across Tenants
-- **Description**: In `app/api/athletes/route.ts`, when creating an athlete with a `parent_email`, the route resolves the parent user by email globally (`prisma.user.findUnique({ where: { email } })`) without verifying that the parent has an active `Membership` in the caller's `academyId`.
-- **Impact**: An athlete can be registered under a parent user who has no membership in that academy, preventing the parent from seeing their child in their dashboard.
-- **Remediation**: Filter parent resolution by verifying `Membership` exists for `parentUser.id` and `user.academyId`.
+### 4. [RESOLVED] Parent Lookup Resolves Globally Across Tenants
+- **Date Resolved**: 2026-08-27
+- **Resolution**: Updated `POST /api/athletes` and `POST /api/invoices` to query `prisma.membership` using a composite key `userId_academyId`, strictly scoping parent lookups and authorization to the caller's active tenant (`user.academyId`).
+- **Historical Context**: Previously resolved parent by global email or ID in `POST /api/athletes`, which allowed registering athletes to parents lacking membership in the caller's academy.
 
 ---
 
