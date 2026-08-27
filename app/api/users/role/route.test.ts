@@ -11,7 +11,7 @@ const mockFindUnique = vi.fn();
 const mockMembershipUpdate = vi.fn();
 const mockMembershipCount = vi.fn();
 const mockTransaction = vi.fn();
-const mockWriteAuditLog = vi.fn();
+const mockAuditLogCreate = vi.fn();
 
 vi.mock('@/lib/auth/verifyRequestAuth', () => ({
   verifyRequestAuth: (request: Request) => mockVerifyRequestAuth(request),
@@ -29,16 +29,18 @@ vi.mock('@/lib/prisma', () => ({
       update: (...args: unknown[]) => mockMembershipUpdate(...args),
       count: (...args: unknown[]) => mockMembershipCount(...args),
     },
+    auditLog: {
+      create: (...args: unknown[]) => mockAuditLogCreate(...args),
+    },
     $transaction: (...args: unknown[]) => mockTransaction(...args),
   },
 }));
 
-vi.mock('@/lib/audit/writeAuditLog', () => ({
-  writeAuditLog: (...args: unknown[]) => mockWriteAuditLog(...args),
-}));
-
 describe('/api/users/role authorization rules', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuditLogCreate.mockResolvedValue({ id: 'audit_1' });
+  });
 
   it('denies non-admin access to the user directory', async () => {
     mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'parent_1', role: 'parent', academyId: 'academy_a' });
@@ -100,6 +102,9 @@ describe('/api/users/role authorization rules', () => {
           count: mockMembershipCount.mockResolvedValueOnce(1),
           update: mockMembershipUpdate,
         },
+        auditLog: {
+          create: mockAuditLogCreate,
+        },
       };
       await callback(tx);
     });
@@ -128,6 +133,9 @@ describe('/api/users/role authorization rules', () => {
         membership: {
           count: mockMembershipCount.mockResolvedValueOnce(2),
           update: mockMembershipUpdate,
+        },
+        auditLog: {
+          create: mockAuditLogCreate,
         },
       };
       await callback(tx);
@@ -158,6 +166,9 @@ describe('/api/users/role authorization rules', () => {
         membership: {
           count: mockMembershipCount.mockResolvedValueOnce(2),
           update: mockMembershipUpdate,
+        },
+        auditLog: {
+          create: mockAuditLogCreate,
         },
       };
       await callback(tx);
@@ -257,16 +268,18 @@ describe('/api/users/role authorization rules', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockWriteAuditLog).toHaveBeenCalledTimes(1);
-    expect(mockWriteAuditLog).toHaveBeenCalledWith({
-      academyId: 'academy_a',
-      actorUserId: 'admin_1',
-      action: 'ROLE_CHANGED',
-      targetType: 'Membership',
-      targetId: 'mem_1',
-      metadata: {
-        before: UserRole.PARENT,
-        after: UserRole.COACH,
+    expect(mockAuditLogCreate).toHaveBeenCalledTimes(1);
+    expect(mockAuditLogCreate).toHaveBeenCalledWith({
+      data: {
+        academyId: 'academy_a',
+        actorUserId: 'admin_1',
+        action: 'ROLE_CHANGED',
+        targetType: 'Membership',
+        targetId: 'mem_1',
+        metadata: {
+          before: UserRole.PARENT,
+          after: UserRole.COACH,
+        },
       },
     });
   });
@@ -284,6 +297,63 @@ describe('/api/users/role authorization rules', () => {
     );
 
     expect(response.status).toBe(404);
-    expect(mockWriteAuditLog).not.toHaveBeenCalled();
+    expect(mockAuditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it('rethrows and returns 500 when auditLog.create fails inside a transaction (demoting admin)', async () => {
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'admin_1', role: 'admin', academyId: 'academy_a' });
+    mockRequireRole.mockReturnValueOnce(undefined);
+    mockFindUnique.mockResolvedValueOnce({ id: 'mem_1', role: UserRole.ADMIN });
+    
+    mockTransaction.mockImplementationOnce(async (callback) => {
+      const tx = {
+        membership: {
+          count: mockMembershipCount.mockResolvedValueOnce(2),
+          update: mockMembershipUpdate,
+        },
+        auditLog: {
+          create: mockAuditLogCreate.mockRejectedValueOnce(new Error('Tx audit error')),
+        },
+      };
+      await callback(tx);
+    });
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/users/role', {
+        method: 'POST',
+        body: JSON.stringify({ uid: 'admin_1', role: 'parent' }),
+      })
+    );
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toBe('Failed to update user role');
+  });
+
+  it('succeeds and returns 200 when auditLog.create fails outside a transaction', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockVerifyRequestAuth.mockResolvedValueOnce({ uid: 'admin_1', role: 'admin', academyId: 'academy_a' });
+    mockRequireRole.mockReturnValueOnce(undefined);
+    mockFindUnique.mockResolvedValueOnce({ id: 'mem_1', role: UserRole.PARENT });
+    mockMembershipUpdate.mockResolvedValueOnce({ id: 'mem_1', role: UserRole.COACH });
+    mockAuditLogCreate.mockRejectedValueOnce(new Error('Non-tx audit error'));
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/users/role', {
+        method: 'POST',
+        body: JSON.stringify({ uid: 'user_1', role: 'coach' }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toEqual({ success: true, role: 'coach' });
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Audit log failed for action ROLE_CHANGED:',
+      expect.any(Error)
+    );
+
+    consoleSpy.mockRestore();
   });
 });
+

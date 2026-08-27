@@ -7,7 +7,7 @@ export type WriteAuditLogParams = {
   action: string;
   targetType: string;
   targetId: string;
-  metadata?: any;
+  metadata?: Prisma.InputJsonValue;
 };
 
 type PrismaTx = Omit<
@@ -19,19 +19,23 @@ export async function writeAuditLog(
   params: WriteAuditLogParams,
   tx?: PrismaTx
 ) {
-  const client = tx || prisma;
-  try {
-    await client.auditLog.create({
-      data: {
-        academyId: params.academyId ?? null,
-        actorUserId: params.actorUserId,
-        action: params.action,
-        targetType: params.targetType,
-        targetId: params.targetId,
-        metadata: params.metadata ? (params.metadata as Prisma.InputJsonValue) : Prisma.DbNull,
-      },
-    });
-  } catch (error) {
-    console.error(`Audit log failed for action ${params.action}:`, error);
+  const data = {
+    academyId: params.academyId ?? null,
+    actorUserId: params.actorUserId,
+    action: params.action,
+    targetType: params.targetType,
+    targetId: params.targetId,
+    metadata: params.metadata !== undefined ? params.metadata : Prisma.DbNull,
+  };
+
+  if (tx) {
+    await tx.auditLog.create({ data });
+  } else {
+    try {
+      await prisma.auditLog.create({ data });
+    } catch (error) {
+      console.error(`Audit log failed for action ${params.action}:`, error);
+    }
   }
 }
+
