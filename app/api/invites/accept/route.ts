@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth/betterAuth';
 import { hashInviteToken } from '@/lib/auth/inviteToken';
 import { internalInviteScope } from '@/lib/auth/internalInviteScope';
+import { writeAuditLog } from '@/lib/audit/writeAuditLog';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,6 +94,16 @@ export async function POST(request: Request) {
           where: { id: invite.id },
           data: { acceptedAt: new Date() },
         });
+        await writeAuditLog(
+          {
+            academyId: invite.academyId,
+            actorUserId: sessionUserId,
+            action: 'INVITE_ACCEPTED',
+            targetType: 'Invite',
+            targetId: invite.id,
+          },
+          tx
+        );
       });
 
       return NextResponse.json({
@@ -146,6 +157,16 @@ export async function POST(request: Request) {
           where: { id: invite.id },
           data: { acceptedAt: new Date() },
         });
+        await writeAuditLog(
+          {
+            academyId: invite.academyId,
+            actorUserId: userId,
+            action: 'INVITE_ACCEPTED',
+            targetType: 'Invite',
+            targetId: invite.id,
+          },
+          tx
+        );
       });
     } catch (err) {
       console.error(`Error in post-signup transaction for user ${userId}. Rolling back user creation.`, err);

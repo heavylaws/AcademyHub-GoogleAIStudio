@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyRequestAuth } from '@/lib/auth/verifyRequestAuth';
 import { requireRole } from '@/lib/auth/requireRole';
 import { authFailure } from '@/lib/auth/authFailure';
+import { writeAuditLog } from '@/lib/audit/writeAuditLog';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,14 @@ export async function POST(request: Request, context: RouteContext) {
       where: { id },
       data: { revokedAt: new Date() },
       select: { id: true, email: true, role: true, revokedAt: true },
+    });
+
+    await writeAuditLog({
+      academyId: user.academyId,
+      actorUserId: user.uid,
+      action: 'INVITE_REVOKED',
+      targetType: 'Invite',
+      targetId: id,
     });
 
     return NextResponse.json({ invite: revoked });

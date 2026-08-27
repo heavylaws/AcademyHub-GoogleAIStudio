@@ -9,6 +9,7 @@ const mockInviteFindMany = vi.fn();
 const mockInviteCreate = vi.fn();
 const mockInviteUpdateMany = vi.fn();
 const mockMembershipFindFirst = vi.fn();
+const mockWriteAuditLog = vi.fn();
 
 vi.mock('@/lib/auth/verifyRequestAuth', () => ({
   verifyRequestAuth: (req: Request) => mockVerifyRequestAuth(req),
@@ -29,6 +30,10 @@ vi.mock('@/lib/prisma', () => ({
       findFirst: (args: unknown) => mockMembershipFindFirst(args),
     },
   },
+}));
+
+vi.mock('@/lib/audit/writeAuditLog', () => ({
+  writeAuditLog: (...args: unknown[]) => mockWriteAuditLog(...args),
 }));
 
 describe('/api/invites collection routes', () => {
@@ -70,5 +75,18 @@ describe('/api/invites collection routes', () => {
     const body = await res.json();
     expect(body.invite.acceptUrl).toMatch(/\/invite\//);
     expect(mockInviteCreate).toHaveBeenCalledOnce();
+    
+    expect(mockWriteAuditLog).toHaveBeenCalledTimes(1);
+    expect(mockWriteAuditLog).toHaveBeenCalledWith({
+      academyId: 'acad_1',
+      actorUserId: 'admin_1',
+      action: 'INVITE_CREATED',
+      targetType: 'Invite',
+      targetId: 'inv_1',
+      metadata: {
+        email: 'coach@example.com',
+        role: 'COACH',
+      },
+    });
   });
 });
