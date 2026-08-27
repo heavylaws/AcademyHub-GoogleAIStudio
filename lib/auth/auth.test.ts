@@ -122,6 +122,18 @@ describe('Authorization middleware', () => {
       });
     });
 
+    it('rejects with AuthError 500 when database context resolution fails', async () => {
+      mockGetSession.mockResolvedValueOnce({
+        user: { id: 'user_123' },
+      });
+      mockUserFindUnique.mockRejectedValueOnce(new Error('Database connection failed'));
+
+      await expect(verifyRequestAuth(new Request('http://localhost:3000/api/test'))).rejects.toMatchObject({
+        message: 'Authentication context resolution failed',
+        statusCode: 500,
+      });
+    });
+
     it('preserves an existing role across repeated session verification without provisioning another user', async () => {
       mockGetSession.mockResolvedValue({
         user: { id: 'coach_123' },
