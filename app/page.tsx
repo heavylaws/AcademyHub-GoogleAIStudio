@@ -10,6 +10,7 @@ import BillingSection from '@/components/billing/BillingSection';
 import AuthSection from '@/components/auth/AuthSection';
 import AthleteProfileSection from '@/components/profiles/AthleteProfileSection';
 import AcademySelector from '@/components/AcademySelector';
+import PlatformAuditLogs from '@/components/PlatformAuditLogs';
 import { useAuth, getAcademyHeaders } from '@/lib/authContext';
 import {
   Activity,
@@ -498,6 +499,8 @@ function HomePageContent() {
             </div>
           </section>
         )}
+
+        {role === 'admin' && <PlatformAuditLogs />}
 
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'profiles' && <AthleteProfileSection />}
