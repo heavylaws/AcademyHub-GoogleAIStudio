@@ -18,11 +18,17 @@ import { AuthError, AuthUser } from './types';
  * validated against the Membership table on every request.
  */
 export async function verifyRequestAuth(request: Request): Promise<AuthUser> {
+  let session;
   try {
-    const session = await auth.api.getSession({
+    session = await auth.api.getSession({
       headers: request.headers,
     });
+  } catch (error) {
+    console.warn('Better Auth session verification failed:', error);
+    throw new AuthError('Invalid or expired authentication session', 401);
+  }
 
+  try {
     if (!session?.user) {
       throw new AuthError('Missing authentication session', 401);
     }
@@ -117,7 +123,7 @@ export async function verifyRequestAuth(request: Request): Promise<AuthUser> {
       throw error;
     }
 
-    console.warn('Better Auth session verification failed:', error);
-    throw new AuthError('Invalid or expired authentication session', 401);
+    console.error('Authentication context resolution failed:', error);
+    throw new AuthError('Authentication context resolution failed', 500);
   }
 }
