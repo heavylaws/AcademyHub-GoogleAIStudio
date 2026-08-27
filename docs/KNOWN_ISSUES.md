@@ -37,24 +37,24 @@ This document lists open issues, architectural limitations, and known bugs in Ac
 - **Impact**: A malicious user or tampered client script can alter `computed_score`, `rubric_grade`, or `agent_insights` before persisting them to PostgreSQL.
 - **Remediation**: Combine evaluation and persistence into a single server-side endpoint.
 
-### 6. Missing Update & Delete Endpoints for Athletes and Assessments
-- **Description**: Neither `/api/athletes` nor `/api/assessments` provides `PUT`, `PATCH`, or `DELETE` route handlers.
-- **Impact**: Athletes and assessments cannot be edited or deleted once created, creating a data-rights gap (GDPR/CCPA compliance).
-- **Remediation**: Add `PATCH` and `DELETE` handlers for `/api/athletes/[id]` and `/api/assessments/[id]` with `requireOwnership` guards.
+### 6. [RESOLVED] Missing Update & Delete Endpoints for Athletes and Assessments
+- **Date Resolved**: 2026-08-23
+- **Resolution**: Added `PATCH` and `DELETE` route handlers for `/api/athletes/[id]` and `/api/assessments/[id]` with `requireOwnership` guards and soft-deletion (`deletedAt`) support (resolving commit `f34f34e` / PR #3).
+- **Historical Context**: Neither `/api/athletes` nor `/api/assessments` initially provided update or delete paths.
 
-### 7. Scheduling Feature Operates on `localStorage` Only
-- **Description**: Although PostgreSQL schema defines `Schedule` and `CoachProfile` tables, `components/scheduling/SchedulingSection.tsx` persists schedules exclusively in browser `localStorage`.
-- **Impact**: Schedule data is not shared across devices or persisted in PostgreSQL.
-- **Remediation**: Implement CRUD API routes (`/api/schedules`) backed by `prisma.schedule`.
+### 7. [RESOLVED] Scheduling Feature Operates on `localStorage` Only
+- **Date Resolved**: 2026-08-23
+- **Resolution**: Implemented CRUD API routes (`/api/schedules` and `/api/schedules/[id]`) backed by `prisma.schedule` with transactional court reservation conflict checking and connected UI (resolving commit `19ede42` / PR #4).
+- **Historical Context**: Scheduling previously persisted exclusively in browser `localStorage`.
 
 ---
 
 ## Low Severity
 
-### 8. Hardcoded Zero Counters on Main Dashboard
-- **Description**: `app/page.tsx` renders dashboard metrics cards with hardcoded zero counters (`0 Athletes`, `0 Assessments`).
-- **Impact**: Dashboard statistics do not reflect real database counts.
-- **Remediation**: Connect dashboard metric cards to aggregate queries (`prisma.athlete.count()`, `prisma.assessment.count()`).
+### 8. [RESOLVED] Hardcoded Zero Counters on Main Dashboard
+- **Date Resolved**: 2026-08-23
+- **Resolution**: Implemented `/api/dashboard/metrics` with real Prisma aggregate queries and connected dashboard UI KPI cards (resolving commit `8a876f7` / PR #5).
+- **Historical Context**: Dashboard metrics cards initially rendered static zero values.
 
 ### 9. Token Validity Enumeration on Invite Acceptance
 - **Description**: `POST /api/invites/accept` returns HTTP 403 when an existing user is not logged in, but returns HTTP 400 for an invalid token.
@@ -65,3 +65,24 @@ This document lists open issues, architectural limitations, and known bugs in Ac
 - **Description**: `checkAndRecordAiUsage` in `lib/auth/rateLimitAi.ts` counts existing `AiUsage` records and then creates a new row if below limits.
 - **Impact**: Highly concurrent requests from the same user or academy within milliseconds may bypass the rate limit by 1-2 requests.
 - **Remediation**: Acceptable trade-off for current scale; can be upgraded to atomic upsert or Redis sliding window if concurrency increases.
+
+### 11. Raw Audit Log Metadata Exposure
+- **Description**: Audit log metadata is returned raw to authorized clients without field filtering.
+- **Impact**: Unfiltered metadata could accidentally expose sensitive context if rich data is logged in the future.
+- **Remediation**: Implement a field allowlist on audit metadata before logging any richer data payloads.
+
+### 12. Non-Time-Ordered Cursor Pagination in Audit Log Endpoints
+- **Description**: `/api/audit` and `/api/platform/audit` perform cursor pagination using `cursor: { id }` with `orderBy: { createdAt: 'desc' }`.
+- **Impact**: `cuid()` values are not strictly time-ordered, so audit log rows that share an identical `createdAt` timestamp can be skipped or duplicated across page boundaries.
+- **Remediation**: Upgrade to a composite cursor `(createdAt, id)` at higher log volumes.
+
+### 13. Non-Deterministic Fixture Queries in Auth Integration Tests
+- **Description**: Integration test Cases 12-14 in `lib/auth/authFlow.integration.test.ts` perform `findFirst` queries against shared sequential database state.
+- **Impact**: Tests can become non-deterministic if test execution order or initial DB state changes.
+- **Remediation**: Refactor queries to use unique identifiers or isolated transaction fixtures.
+
+### 14. Un-Rate-Limited Invite Acceptance Endpoint
+- **Description**: `POST /api/invites/accept` lacks rate limiting.
+- **Impact**: Invitation tokens could be subject to automated brute-force attacks.
+- **Remediation**: Apply IP- or user-scoped rate limiting to invite acceptance endpoints.
+
