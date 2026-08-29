@@ -205,114 +205,143 @@ export default function AthleteProfileSection() {
 
       {/* Register New Athlete Modal */}
       {isRegisterModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 w-full max-w-md shadow-2xl space-y-4 mx-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="register-athlete-modal-title"
+        >
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-2xl space-y-4 mx-auto my-8">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white">Register New Student Athlete</h3>
+              <h3 id="register-athlete-modal-title" className="text-base font-extrabold text-white">
+                Register New Student Athlete
+              </h3>
               <button
                 onClick={() => setIsRegisterModalOpen(false)}
-                className="text-slate-400 hover:text-white text-sm"
+                aria-label="Close Registration Dialog"
+                className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-800 text-slate-300 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
               >
                 ✕
               </button>
             </div>
             <form onSubmit={handleRegisterAthlete} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Athlete Full Name</label>
+              <div className="space-y-1">
+                <label htmlFor="reg-athlete-name" className="block text-slate-200 font-bold">
+                  Athlete Full Name
+                </label>
                 <input
+                  id="reg-athlete-name"
                   type="text"
                   required
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="e.g. Jordan Miller"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 h-11 min-h-[44px] text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-medium"
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Age</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor="reg-athlete-age" className="block text-slate-200 font-bold">
+                    Age
+                  </label>
                   <input
+                    id="reg-athlete-age"
                     type="number"
                     required
                     min={6}
                     max={21}
                     value={newAge}
                     onChange={(e) => setNewAge(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 h-11 min-h-[44px] text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 font-medium"
                   />
                 </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Emergency Phone</label>
+                <div className="space-y-1">
+                  <label htmlFor="reg-emergency" className="block text-slate-200 font-bold">
+                    Emergency Phone
+                  </label>
                   <input
+                    id="reg-emergency"
                     type="text"
                     value={newEmergency}
                     onChange={(e) => setNewEmergency(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400 font-mono"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 h-11 min-h-[44px] text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Parent Name</label>
+              <div className="space-y-1">
+                <label htmlFor="reg-parent-name" className="block text-slate-200 font-bold">
+                  Parent Name
+                </label>
                 <input
+                  id="reg-parent-name"
                   type="text"
                   value={newParentName}
                   onChange={(e) => setNewParentName(e.target.value)}
                   placeholder="e.g. Sarah Miller"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 h-11 min-h-[44px] text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-medium"
                 />
               </div>
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Parent Email (COPPA Link)</label>
+              <div className="space-y-1">
+                <label htmlFor="reg-parent-email" className="block text-slate-200 font-bold">
+                  Parent Email (COPPA Link)
+                </label>
                 <input
+                  id="reg-parent-email"
                   type="email"
                   required
                   value={newParentEmail}
                   onChange={(e) => setNewParentEmail(e.target.value)}
                   placeholder="parent@gmail.com"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400 font-mono"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 h-11 min-h-[44px] text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono"
                 />
               </div>
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Parent Account ID</label>
+              <div className="space-y-1">
+                <label htmlFor="reg-parent-id" className="block text-slate-200 font-bold">
+                  Parent Account ID
+                </label>
                 <input
+                  id="reg-parent-id"
                   type="text"
                   required
                   value={newParentUserId}
                   onChange={(e) => setNewParentUserId(e.target.value)}
                   placeholder="Parent must have signed in once"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 h-11 min-h-[44px] text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-medium"
                 />
               </div>
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Enrolled Sports (comma separated)</label>
+              <div className="space-y-1">
+                <label htmlFor="reg-sports" className="block text-slate-200 font-bold">
+                  Enrolled Sports (comma separated)
+                </label>
                 <input
+                  id="reg-sports"
                   type="text"
                   value={newSports}
                   onChange={(e) => setNewSports(e.target.value)}
                   placeholder="Basketball, Football, Badminton"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 h-11 text-white focus:outline-none focus:border-cyan-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 h-11 min-h-[44px] text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-medium"
                 />
               </div>
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-3 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsRegisterModalOpen(false)}
-                  className="px-4 py-2 h-11 min-h-[44px] rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                  className="px-4 py-2 h-11 min-h-[44px] rounded-xl bg-slate-800 text-slate-200 hover:text-white font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 active:scale-[0.98]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 h-11 min-h-[44px] rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 font-bold"
+                  className="px-4 py-2 h-11 min-h-[44px] rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-extrabold shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 active:scale-[0.98]"
                 >
                   Save Athlete
                 </button>
-                {registrationError && (
-                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300">
-                    {registrationError}
-                  </div>
-                )}
               </div>
+              {registrationError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+                  {registrationError}
+                </div>
+              )}
             </form>
           </div>
         </div>

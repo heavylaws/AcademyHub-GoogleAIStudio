@@ -232,35 +232,44 @@ export default function SchedulingSection() {
           </h3>
 
           <form onSubmit={handleAddSession} className="space-y-3 text-xs">
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Session Title</label>
+            <div className="space-y-1">
+              <label htmlFor="sched-title" className="block font-bold text-slate-800 dark:text-slate-200">
+                Session Title
+              </label>
               <input
+                id="sched-title"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Explosive Jump & Smash Clinic"
-                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500"
+                className="w-full h-11 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
                 required
               />
             </div>
 
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Date</label>
+            <div className="space-y-1">
+              <label htmlFor="sched-date" className="block font-bold text-slate-800 dark:text-slate-200">
+                Date
+              </label>
               <input
+                id="sched-date"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-mono font-semibold"
+                className="w-full h-11 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono font-semibold"
                 required
               />
             </div>
 
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Facility / Court</label>
+            <div className="space-y-1">
+              <label htmlFor="sched-facility" className="block font-bold text-slate-800 dark:text-slate-200">
+                Facility / Court
+              </label>
               <select
+                id="sched-facility"
                 value={facility}
                 onChange={(e) => setFacility(e.target.value)}
-                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-semibold"
+                className="w-full h-11 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
               >
                 <option value="Main Court A">Main Court A</option>
                 <option value="Main Court B">Main Court B</option>
@@ -270,12 +279,15 @@ export default function SchedulingSection() {
               </select>
             </div>
 
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned Coach</label>
+            <div className="space-y-1">
+              <label htmlFor="sched-coach" className="block font-bold text-slate-800 dark:text-slate-200">
+                Assigned Coach
+              </label>
               <select
+                id="sched-coach"
                 value={coachName}
                 onChange={(e) => setCoachName(e.target.value)}
-                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-semibold"
+                className="w-full h-11 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
               >
                 <option value="Coach Davis">Coach Davis (Basketball & Plyometrics)</option>
                 <option value="Coach Taylor">Coach Taylor (Sprint & Athletics)</option>
@@ -283,12 +295,15 @@ export default function SchedulingSection() {
               </select>
             </div>
 
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Sport Category</label>
+            <div className="space-y-1">
+              <label htmlFor="sched-sport" className="block font-bold text-slate-800 dark:text-slate-200">
+                Sport Category
+              </label>
               <select
+                id="sched-sport"
                 value={sport}
                 onChange={(e) => setSport(e.target.value)}
-                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-semibold"
+                className="w-full h-11 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
               >
                 <option value="Basketball">Basketball</option>
                 <option value="Track & Field">Track & Field</option>
@@ -298,12 +313,15 @@ export default function SchedulingSection() {
               </select>
             </div>
 
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Time Slot</label>
+            <div className="space-y-1">
+              <label htmlFor="sched-timeslot" className="block font-bold text-slate-800 dark:text-slate-200">
+                Time Slot
+              </label>
               <select
+                id="sched-timeslot"
                 value={timeSlot}
                 onChange={(e) => setTimeSlot(e.target.value)}
-                className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-purple-500 font-mono font-semibold"
+                className="w-full h-11 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono font-semibold"
               >
                 <option value="14:00 - 15:30">14:00 - 15:30</option>
                 <option value="16:00 - 17:00">16:00 - 17:00</option>
@@ -314,37 +332,40 @@ export default function SchedulingSection() {
 
             {/* CONFLICT WARNING ALERT */}
             {conflictWarning && (
-              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-center gap-2 font-semibold animate-pulse">
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2 font-semibold">
                 <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" />
                 <div>{conflictWarning}</div>
               </div>
             )}
 
-            {errorMsg && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs font-mono flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                {errorMsg}
+            {/* SUCCESS MESSAGE ALERT */}
+            {successMsg && (
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs flex items-center gap-2 font-semibold">
+                <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <div>{successMsg}</div>
               </div>
             )}
 
-            {successMsg && (
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-mono flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                {successMsg}
+            {/* ERROR MESSAGE ALERT */}
+            {errorMsg && (
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2 font-semibold">
+                <ShieldAlert className="w-5 h-5 shrink-0 text-rose-600 dark:text-rose-400" />
+                <div>{errorMsg}</div>
               </div>
             )}
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-11 bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 text-white dark:text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 shadow-sm disabled:opacity-50"
+              className="w-full mt-2 min-h-[48px] rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-sm py-3 px-4 shadow-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 active:scale-[0.98] disabled:opacity-50"
             >
               {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Checking Conflicts...
-                </>
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Checking Conflict Engine…
+                </span>
               ) : (
-                'Check Conflicts & Schedule Session'
+                'Schedule Facility Reservation'
               )}
             </button>
           </form>

@@ -8,10 +8,13 @@
   --brand-emerald: #34d399;
   --brand-violet: #8b5cf6;
   --surface-glow: rgba(34, 211, 238, 0.12);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 html {
   scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -32,3 +35,28 @@ body {
   background: rgba(34, 211, 238, 0.35);
   color: #0f172a;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  body,
+  .dark body {
+    background: #f8fafc;
+  }
+  
+  .dark body {
+    background: #020817;
+  }
+}
+

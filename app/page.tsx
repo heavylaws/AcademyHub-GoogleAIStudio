@@ -11,6 +11,7 @@ import AuthSection from '@/components/auth/AuthSection';
 import AthleteProfileSection from '@/components/profiles/AthleteProfileSection';
 import AcademySelector from '@/components/AcademySelector';
 import PlatformAuditLogs from '@/components/PlatformAuditLogs';
+import PlatformAdminConsole from '@/components/PlatformAdminConsole';
 import { useAuth, getAcademyHeaders } from '@/lib/authContext';
 import {
   Activity,
@@ -91,7 +92,14 @@ function HomePageContent() {
   }, [role, user, activeAcademyId]);
 
   useEffect(() => {
-    if (!user || !activeAcademyId) return;
+    if (!user) return;
+
+    if (!activeAcademyId) {
+      setMetrics(null);
+      setMetricsLoading(false);
+      setMetricsError(null);
+      return;
+    }
 
     let isMounted = true;
     const fetchMetrics = async () => {
@@ -315,9 +323,10 @@ function HomePageContent() {
             </h3>
             <button
               onClick={() => setActiveTab('biomechanics')}
-              className="min-h-[44px] text-sm sm:text-xs text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 self-start sm:self-auto"
+              aria-label="View all cross-sport biomechanics assessments"
+              className="min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 flex items-center gap-1 self-start sm:self-auto transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 active:scale-[0.98]"
             >
-              View All <ArrowUpRight className="w-4 h-4 sm:w-3 sm:h-3" />
+              View All <ArrowUpRight className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
             </button>
           </div>
           <div className="space-y-3">
@@ -358,9 +367,10 @@ function HomePageContent() {
             </h3>
             <button
               onClick={() => setActiveTab('scheduling')}
-              className="min-h-[44px] text-sm sm:text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 self-start sm:self-auto"
+              aria-label="Manage facility scheduling calendar"
+              className="min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl text-xs font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 flex items-center gap-1 self-start sm:self-auto transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 active:scale-[0.98]"
             >
-              Manage Calendar <ArrowUpRight className="w-4 h-4 sm:w-3 sm:h-3" />
+              Manage Calendar <ArrowUpRight className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
             </button>
           </div>
           <div className="space-y-3">
@@ -398,31 +408,31 @@ function HomePageContent() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950 transition-colors duration-200">
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="w-full max-w-screen-xl mx-auto p-4 md:p-6 lg:p-8 space-y-8">
+      <main id="main-content" className="w-full max-w-screen-xl mx-auto p-4 md:p-6 lg:p-8 space-y-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-6 lg:p-8 rounded-2xl bg-white dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 shadow-xl dark:shadow-slate-950/50">
           <div className="flex flex-col">
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-md border border-cyan-500/20">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 px-2.5 py-0.5 rounded-md border border-cyan-500/20">
                 Academy Management Dashboard
               </span>
               <span
                 className={`text-xs font-mono font-bold uppercase px-2 py-0.5 rounded-md border ${
                   role === 'admin'
-                    ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+                    ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20'
                     : role === 'coach'
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20'
                     : role === 'parent'
-                    ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
-                    : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20'
+                    ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20'
+                    : 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20'
                 }`}
               >
                 Role: {currentRole} ({currentUserName})
               </span>
               <span
-                className={`text-xs font-mono px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                className={`text-xs font-mono px-2 py-0.5 rounded-md border flex items-center gap-1 font-semibold ${
                   user
-                    ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                    : 'text-slate-500 dark:text-slate-400 bg-slate-500/10 border-slate-500/20'
+                    ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/20'
+                    : 'text-slate-600 dark:text-slate-300 bg-slate-500/10 border-slate-500/20'
                 }`}
               >
                 <CheckCircle2 className="w-3 h-3" /> Live
@@ -431,7 +441,7 @@ function HomePageContent() {
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
               AcademyHub: Athletic Biomechanics & Family Ledger
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
+            <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 mt-1 max-w-2xl font-medium">
               Multi-agent joint kinematics, cross-sport youth profiles, coach reservation conflict engine, and consolidated family invoices with 10% sibling discounts.
             </p>
           </div>
@@ -439,14 +449,14 @@ function HomePageContent() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
               onClick={() => setActiveTab('profiles')}
-              className="min-h-[44px] justify-center bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition-all border border-slate-200 dark:border-slate-700"
+              className="min-h-[44px] justify-center bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition-all border border-slate-200 dark:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 active:scale-[0.98]"
             >
               <UserCheck className="w-5 h-5 text-cyan-500" />
               Student Profiles
             </button>
             <button
               onClick={() => setActiveTab('biomechanics')}
-              className="min-h-[44px] justify-center bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-md transition-all"
+              className="min-h-[44px] justify-center bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 active:scale-[0.98]"
             >
               <Activity className="w-5 h-5" />
               New Video Audit
@@ -458,33 +468,34 @@ function HomePageContent() {
           <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 md:p-6 shadow-sm">
             <div className="flex items-center justify-between gap-3 mb-4">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">Admin Role Assignment</h2>
-              <span className="text-[10px] uppercase tracking-wide text-cyan-600 dark:text-cyan-400 font-mono">Restricted</span>
+              <span className="text-[10px] uppercase tracking-wide text-cyan-700 dark:text-cyan-300 font-mono font-bold">Restricted</span>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-xs">
                 <thead>
-                  <tr className="text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                    <th className="pb-2 pr-4 font-semibold">Email</th>
-                    <th className="pb-2 pr-4 font-semibold">Display name</th>
-                    <th className="pb-2 pr-4 font-semibold">Role</th>
+                  <tr className="text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
+                    <th className="pb-2 pr-4 font-bold">Email</th>
+                    <th className="pb-2 pr-4 font-bold">Display name</th>
+                    <th className="pb-2 pr-4 font-bold">Role</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="py-4 text-slate-500 dark:text-slate-400">No users found yet.</td>
+                      <td colSpan={3} className="py-4 text-slate-600 dark:text-slate-300 font-medium">No users found yet.</td>
                     </tr>
                   ) : (
                     users.map((entry) => (
                       <tr key={entry.uid} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
-                        <td className="py-3 pr-4 font-mono text-slate-700 dark:text-slate-200">{entry.email}</td>
-                        <td className="py-3 pr-4 text-slate-700 dark:text-slate-200">{entry.displayName || '—'}</td>
+                        <td className="py-3 pr-4 font-mono font-medium text-slate-800 dark:text-slate-200">{entry.email}</td>
+                        <td className="py-3 pr-4 text-slate-800 dark:text-slate-200 font-medium">{entry.displayName || '—'}</td>
                         <td className="py-3 pr-4">
                           <select
                             value={entry.role}
                             disabled={adminBusy}
                             onChange={(event) => handleRoleChange(entry.uid, event.target.value)}
-                            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-950 px-2 py-1.5 text-slate-900 dark:text-slate-100"
+                            aria-label={`Role for ${entry.email}`}
+                            className="min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500"
                           >
                             <option value="admin">admin</option>
                             <option value="coach">coach</option>
@@ -500,8 +511,7 @@ function HomePageContent() {
           </section>
         )}
 
-        {role === 'admin' && <PlatformAuditLogs />}
-
+        {activeTab === 'platform' && <PlatformAdminConsole />}
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'profiles' && <AthleteProfileSection />}
         {activeTab === 'biomechanics' && <BiomechanicsSection />}

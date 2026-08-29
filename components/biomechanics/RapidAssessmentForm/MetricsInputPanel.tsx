@@ -54,7 +54,8 @@ export default function MetricsInputPanel({
               id="stepper-minus-5"
               type="button"
               onClick={() => onValidRepsChange(Math.max(0, validReps - 5))}
-              className="h-11 px-3 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-mono font-bold text-xs active:scale-95 transition-all"
+              aria-label="Decrease reps by 5"
+              className="h-11 min-h-[44px] px-3.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-mono font-extrabold text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 active:scale-95"
             >
               -5
             </button>
@@ -62,25 +63,29 @@ export default function MetricsInputPanel({
               id="stepper-minus-1"
               type="button"
               onClick={() => onValidRepsChange(Math.max(0, validReps - 1))}
-              className="h-11 w-12 flex items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold active:scale-95 transition-all"
+              aria-label="Decrease reps by 1"
+              className="h-11 min-h-[44px] w-12 flex items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 active:scale-95"
             >
               <Minus className="w-4 h-4" />
             </button>
 
             <input
+              id="reps-input-field"
               type="number"
               min="0"
               max="100"
+              aria-label="Valid Completed Repetitions"
               value={validReps}
               onChange={(e) => onValidRepsChange(Math.max(0, parseInt(e.target.value) || 0))}
-              className="h-11 flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-center font-mono font-black text-lg text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+              className="h-11 min-h-[44px] flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-center font-mono font-black text-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
 
             <button
               id="stepper-plus-1"
               type="button"
               onClick={() => onValidRepsChange(validReps + 1)}
-              className="h-11 w-12 flex items-center justify-center rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold active:scale-95 transition-all shadow-sm"
+              aria-label="Increase reps by 1"
+              className="h-11 min-h-[44px] w-12 flex items-center justify-center rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 active:scale-95"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -88,7 +93,8 @@ export default function MetricsInputPanel({
               id="stepper-plus-5"
               type="button"
               onClick={() => onValidRepsChange(validReps + 5)}
-              className="h-11 px-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs active:scale-95 transition-all shadow-sm"
+              aria-label="Increase reps by 5"
+              className="h-11 min-h-[44px] px-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-extrabold text-xs transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 active:scale-95"
             >
               +5
             </button>
@@ -98,7 +104,7 @@ export default function MetricsInputPanel({
         {/* Timer & Duration Section */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
               Session Duration
             </span>
@@ -118,7 +124,8 @@ export default function MetricsInputPanel({
               id="timer-toggle-btn"
               type="button"
               onClick={onToggleTimer}
-              className={`h-11 flex-1 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm ${
+              aria-label={isTimerRunning ? 'Stop Timer' : 'Start Live Timer'}
+              className={`h-11 min-h-[44px] flex-1 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 active:scale-95 ${
                 isTimerRunning
                   ? 'bg-rose-600 hover:bg-rose-500 text-white'
                   : 'bg-emerald-600 hover:bg-emerald-500 text-white'
@@ -139,8 +146,9 @@ export default function MetricsInputPanel({
               id="timer-reset-btn"
               type="button"
               onClick={onResetTimer}
+              aria-label="Reset timer to 30 seconds"
               title="Reset to 30s"
-              className="h-11 w-11 flex items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+              className="h-11 min-h-[44px] w-11 flex items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 active:scale-95"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -151,10 +159,11 @@ export default function MetricsInputPanel({
                   key={preset}
                   type="button"
                   onClick={() => onSetTimerPreset(preset)}
-                  className={`h-11 px-2.5 rounded-xl font-mono text-[11px] font-bold transition-all ${
+                  aria-label={`Set timer preset ${preset} seconds`}
+                  className={`h-11 min-h-[44px] px-2.5 rounded-xl font-mono text-[11px] font-extrabold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 active:scale-95 ${
                     durationSeconds === preset
-                      ? 'bg-cyan-500 text-slate-950'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   {preset}s

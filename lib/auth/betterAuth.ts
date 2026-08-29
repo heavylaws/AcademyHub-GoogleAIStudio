@@ -9,6 +9,11 @@ const secret = appEnv.betterAuthSecret;
 
 export const auth = betterAuth({
   baseURL: appEnv.betterAuthUrl,
+  trustedOrigins: [
+    appEnv.betterAuthUrl,
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+  ],
   secret,
   database: prismaAdapter(prisma, {
     provider: 'postgresql',

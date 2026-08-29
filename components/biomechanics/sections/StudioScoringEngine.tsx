@@ -110,27 +110,28 @@ export default function StudioScoringEngine({
 
         {/* Media References Configuration */}
         <div className="space-y-3 text-xs border-t border-slate-200 dark:border-slate-800 pt-3">
-          <label className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <label htmlFor="studio-video-path" className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
             <Video className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
             Media Reference Path (Storage)
           </label>
           <input
+            id="studio-video-path"
             type="text"
             value={videoStoragePath}
             onChange={(e) => onVideoStoragePathChange(e.target.value)}
             placeholder="Cloud Storage video path..."
-            className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 font-mono text-[11px] focus:outline-none focus:border-cyan-500"
+            className="w-full h-11 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 font-mono text-[11px] focus:outline-none focus:ring-2 focus:ring-cyan-500 font-medium"
           />
 
           <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-            <span className="text-[11px] text-slate-700 dark:text-slate-300 font-medium">Smart Grid Processed:</span>
+            <span className="text-[11px] text-slate-800 dark:text-slate-200 font-bold">Smart Grid Processed:</span>
             <button
               type="button"
               onClick={onToggleSmartGrid}
-              className={`min-h-[44px] px-3 py-1 rounded-lg font-mono text-[10px] font-bold transition-all ${
+              className={`min-h-[44px] min-w-[44px] px-3.5 py-1.5 rounded-xl font-mono text-[11px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 active:scale-[0.98] ${
                 smartGridProcessed
-                  ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40'
-                  : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
               }`}
             >
               {smartGridProcessed ? 'TRUE (Active)' : 'FALSE (Pending)'}
@@ -142,7 +143,7 @@ export default function StudioScoringEngine({
         <button
           onClick={onSaveAssessment}
           disabled={isIngesting}
-          className="w-full min-h-[44px] bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
+          className="w-full min-h-[48px] bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-extrabold py-3 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 active:scale-[0.98] disabled:opacity-50"
         >
           {isIngesting ? (
             <>Saving Assessment to Postgres...</>

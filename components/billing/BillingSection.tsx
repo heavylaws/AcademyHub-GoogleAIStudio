@@ -606,34 +606,41 @@ export default function BillingSection() {
 
       {/* Official Printable Family Invoice Modal with Stripe Checkout */}
       {selectedInvoiceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-white text-slate-900 border border-slate-300 rounded-2xl p-4 md:p-8 w-full max-w-screen-md shadow-2xl space-y-6 relative overflow-hidden">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="family-invoice-modal-title"
+        >
+          <div className="bg-white text-slate-900 border border-slate-300 rounded-3xl p-4 md:p-8 w-full max-w-screen-md shadow-2xl space-y-6 relative overflow-hidden my-8">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div>
-                <div className="text-xl font-black tracking-tight text-slate-900">ACADEMYHUB ATHLETICS</div>
-                <div className="text-xs text-slate-500">Official Family Billing Receipt & Invoice Statement</div>
+                <div id="family-invoice-modal-title" className="text-xl font-black tracking-tight text-slate-900">
+                  ACADEMYHUB ATHLETICS
+                </div>
+                <div className="text-xs text-slate-600 font-medium">Official Family Billing Receipt & Invoice Statement</div>
               </div>
               <div className="text-right font-mono text-xs">
-                <div className="font-bold text-cyan-600 text-sm">{selectedInvoiceModal.id}</div>
-                <div className="text-slate-500">Date: {selectedInvoiceModal.issuedDate}</div>
+                <div className="font-bold text-cyan-700 text-sm">{selectedInvoiceModal.id}</div>
+                <div className="text-slate-600">Date: {selectedInvoiceModal.issuedDate}</div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
-                <div className="font-bold text-slate-500 uppercase font-mono text-[10px]">Billed Parent / Guardian</div>
+                <div className="font-bold text-slate-600 uppercase font-mono text-[10px]">Billed Parent / Guardian</div>
                 <div className="font-bold text-sm text-slate-900 mt-0.5">{selectedInvoiceModal.parentName}</div>
-                <div className="text-slate-600 font-mono">{selectedInvoiceModal.parentEmail}</div>
+                <div className="text-slate-700 font-mono">{selectedInvoiceModal.parentEmail}</div>
               </div>
               <div className="text-right">
-                <div className="font-bold text-slate-500 uppercase font-mono text-[10px]">Payment Schedule</div>
+                <div className="font-bold text-slate-600 uppercase font-mono text-[10px]">Payment Schedule</div>
                 <div className="font-bold text-slate-900 mt-0.5 capitalize">{selectedInvoiceModal.paymentSchedule} Installments</div>
                 <div className={`font-bold font-mono uppercase text-[11px] ${
                   selectedInvoiceModal.payment_status === 'paid'
-                    ? 'text-emerald-600'
+                    ? 'text-emerald-700'
                     : selectedInvoiceModal.payment_status === 'overdue'
-                    ? 'text-rose-600'
-                    : 'text-amber-600'
+                    ? 'text-rose-700'
+                    : 'text-amber-700'
                 }`}>
                   Status: {selectedInvoiceModal.payment_status}
                 </div>
@@ -642,18 +649,18 @@ export default function BillingSection() {
 
             {/* Line Items */}
             <div className="space-y-2">
-              <div className="font-mono text-[10px] uppercase font-bold text-slate-500 border-b border-slate-200 pb-1 flex justify-between">
+              <div className="font-mono text-[10px] uppercase font-bold text-slate-600 border-b border-slate-200 pb-1 flex justify-between">
                 <span>Description / Enrolled Student</span>
                 <span>Amount</span>
               </div>
               {selectedInvoiceModal.children.map((child, idx) => (
-                <div key={idx} className="flex justify-between text-xs py-1">
+                <div key={idx} className="flex justify-between text-xs py-1 text-slate-800 font-medium">
                   <span>{child.childName} — {child.sport} Monthly Tuition</span>
                   <span className="font-mono font-bold">${child.monthlyFee}.00</span>
                 </div>
               ))}
               {selectedInvoiceModal.siblingDiscountAmount > 0 && (
-                <div className="flex justify-between text-xs py-1 text-emerald-600 font-bold border-t border-slate-100">
+                <div className="flex justify-between text-xs py-1 text-emerald-700 font-bold border-t border-slate-100">
                   <span>10% Sibling Discount ({selectedInvoiceModal.discountedChildName})</span>
                   <span className="font-mono">-${selectedInvoiceModal.siblingDiscountAmount}.00</span>
                 </div>
@@ -661,36 +668,33 @@ export default function BillingSection() {
             </div>
 
             {/* Total Summary */}
-            <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-200">
-              <div className="flex justify-between text-xs text-slate-600">
+            <div className="bg-slate-50 p-4 rounded-2xl space-y-2 border border-slate-200">
+              <div className="flex justify-between text-xs text-slate-700 font-medium">
                 <span>Gross Subtotal:</span>
-                <span className="font-mono">${selectedInvoiceModal.subtotal}.00</span>
+                <span className="font-mono font-semibold">${selectedInvoiceModal.subtotal}.00</span>
               </div>
               <div className="flex justify-between text-sm font-black text-slate-900 border-t border-slate-200 pt-2">
                 <span>Net Total Payable:</span>
-                <span className="font-mono text-cyan-600">${selectedInvoiceModal.netTotal}.00</span>
+                <span className="font-mono text-cyan-700">${selectedInvoiceModal.netTotal}.00</span>
               </div>
             </div>
 
-                        {/* Action Buttons */}
-            <div className="flex flex-wrap justify-end gap-3 pt-2">
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
               <button
-                onClick={() => {
-                  setSelectedInvoiceModal(null);
-                  }}
-                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 min-h-[44px]"
+                onClick={() => setSelectedInvoiceModal(null)}
+                aria-label="Close Invoice Statement"
+                className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 font-bold text-xs hover:bg-slate-200 min-h-[44px] min-w-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:scale-[0.98]"
               >
                 Close
               </button>
               <button
                 onClick={() => window.print()}
-                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-2 shadow min-h-[44px]"
+                aria-label="Print or Save Official PDF Statement"
+                className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-2 shadow min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 active:scale-[0.98]"
               >
                 <span>🖨️ Print / Save Official PDF</span>
               </button>
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-mono">
-                Payment recording is enabled through the invoice lifecycle and billing workflow.
-              </div>
             </div>
           </div>
         </div>

@@ -5,14 +5,16 @@ import {
   ShieldCheck,
   Lock,
   FileText,
-  UserCheck,
   Key,
   Eye,
   EyeOff,
   CheckCircle2,
   AlertCircle,
   Loader2,
-  LogOut
+  LogOut,
+  UserCheck,
+  Zap,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
 
@@ -89,74 +91,104 @@ export default function AuthSection() {
   };
 
   return (
-    <div className="space-y-6 transition-colors duration-200">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            Secure Role-Based Authentication & COPPA Privacy Gate
-          </h2>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            Better Auth sessions, role-based authorization, and multi-tenant youth privacy filters.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 font-mono text-xs bg-slate-50 dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
-          <span className="text-slate-500 dark:text-slate-400">Security Gate:</span>
-          <span className={`font-bold uppercase ${
-            role === 'admin'
-              ? 'text-cyan-600 dark:text-cyan-400'
-              : role === 'coach'
-              ? 'text-emerald-600 dark:text-emerald-400'
-              : role === 'parent'
-              ? 'text-purple-600 dark:text-purple-400'
-              : 'text-slate-500 dark:text-slate-400'
-          }`}>
-            {role ? `${role} Active` : user ? 'Authenticated (No Role)' : 'Unauthenticated'}
-          </span>
-        </div>
-      </div>
+    <div className="relative py-6 md:py-10 max-w-4xl mx-auto space-y-8 transition-colors duration-200">
+      {/* Background Radial Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-tr from-cyan-500/15 via-purple-500/10 to-transparent blur-3xl rounded-full pointer-events-none -z-10" />
 
-      <div className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-200 dark:border-slate-800">
+      {/* Main Centered Login Card */}
+      <div className="max-w-md mx-auto rounded-3xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800/80 shadow-2xl dark:shadow-slate-950/60 overflow-hidden transition-all">
+        {/* Header Header & Branding */}
+        <div className="p-6 pb-4 text-center space-y-2 border-b border-slate-100 dark:border-slate-800/60">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-emerald-400 p-0.5 shadow-lg shadow-cyan-500/20 mb-1">
+            <div className="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center">
+              <Zap className="w-6 h-6 text-cyan-400" />
+            </div>
+          </div>
+          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            AcademyHub Portal
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Secure Role-Based Authentication & Youth Privacy Gate
+          </p>
+
+          <div className="pt-2 flex items-center justify-center gap-2">
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Gate Status:
+            </span>
+            <span
+              className={`text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full border ${
+                role === 'admin'
+                  ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+                  : role === 'coach'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                  : role === 'parent'
+                  ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              {role ? `${role} Active` : user ? 'Authenticated' : 'Unauthenticated'}
+            </span>
+          </div>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="p-1.5 mx-6 mt-4 rounded-2xl bg-slate-100 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800 flex text-xs font-semibold" role="tablist" aria-label="Authentication modes">
           <button
             type="button"
+            role="tab"
+            aria-selected={mode === 'login'}
             onClick={() => setMode('login')}
-            className={`flex-1 py-3 text-sm font-semibold ${mode === 'login' ? 'bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
+            className={`flex-1 min-h-[44px] py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 active:scale-[0.98] ${
+              mode === 'login'
+                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm font-bold border border-slate-200 dark:border-slate-700'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
           >
+            <ShieldCheck className="w-4 h-4 shrink-0" />
             Sign In
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={mode === 'register'}
             onClick={() => setMode('register')}
-            className={`flex-1 py-3 text-sm font-semibold ${mode === 'register' ? 'bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
+            className={`flex-1 min-h-[44px] py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 active:scale-[0.98] ${
+              mode === 'register'
+                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm font-bold border border-slate-200 dark:border-slate-700'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
           >
+            <Sparkles className="w-4 h-4 shrink-0" />
             Create Account
           </button>
         </div>
 
-        <form onSubmit={mode === 'login' ? handleSignIn : handleRegister} className="space-y-4 p-4 sm:p-5">
+        {/* Form Body */}
+        <form onSubmit={mode === 'login' ? handleSignIn : handleRegister} className="space-y-4 p-6 pt-4">
           {mode === 'register' && (
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+            <div className="space-y-1.5">
+              <label htmlFor="auth-display-name" className="text-xs font-bold text-slate-800 dark:text-slate-200">
                 Display Name
               </label>
               <input
+                id="auth-display-name"
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition-all"
                 placeholder="Full Name"
               />
             </div>
           )}
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+          <div className="space-y-1.5">
+            <label htmlFor="auth-email" className="text-xs font-bold text-slate-800 dark:text-slate-200">
               Email Address
             </label>
             <input
+              id="auth-email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+              className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition-all"
               type="email"
               placeholder="you@example.com"
               autoComplete="email"
@@ -164,15 +196,16 @@ export default function AuthSection() {
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+          <div className="space-y-1.5">
+            <label htmlFor="auth-password" className="text-xs font-bold text-slate-800 dark:text-slate-200">
               Password
             </label>
-            <div className="relative">
+            <div className="relative flex items-center">
               <input
+                id="auth-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 pr-11 text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                className="w-full min-h-[44px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-2.5 pr-12 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition-all"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter your password"
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -182,7 +215,7 @@ export default function AuthSection() {
                 type="button"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 onClick={() => setShowPassword((current) => !current)}
-                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                className="absolute right-0 top-0 bottom-0 flex min-h-[44px] min-w-[44px] items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded-r-xl"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -190,80 +223,84 @@ export default function AuthSection() {
           </div>
 
           {errorMessage && (
-            <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="flex items-start gap-2.5 rounded-2xl border border-rose-300 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-800 dark:border-rose-500/40 dark:bg-rose-500/15 dark:text-rose-200">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <span className="leading-tight">{errorMessage}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{successMessage}</span>
+            <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-300 bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-200">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <span className="leading-tight">{successMessage}</span>
             </div>
           )}
 
           <button
             type="submit"
             disabled={submitting || authLoading}
-            className="w-full rounded-xl bg-slate-900 dark:bg-white px-4 py-2.5 text-sm font-semibold text-white dark:text-slate-900 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full mt-2 min-h-[48px] rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-extrabold text-sm py-3 px-4 shadow-lg shadow-cyan-500/20 active:scale-[0.99] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? (
               <span className="inline-flex items-center justify-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {mode === 'login' ? 'Signing in...' : 'Creating account...'}
+                {mode === 'login' ? 'Authenticating...' : 'Creating Account...'}
               </span>
             ) : mode === 'login' ? (
-              'Sign In'
+              'Sign In to Dashboard'
             ) : (
-              'Create Account'
+              'Create New Account'
             )}
           </button>
         </form>
+
+        {user && (
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/40">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-semibold truncate">
+                <UserCheck className="h-4 w-4 shrink-0" />
+                <span className="truncate">{user.email}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sign Out
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {user && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <UserCheck className="h-4 w-4" />
-              <span>Authenticated as {user.email}</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-slate-950 dark:text-emerald-200"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Sign Out
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
-          <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300">
+      {/* Feature Value Cards */}
+      <div className="grid gap-4 md:grid-cols-3 max-w-3xl mx-auto">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/60 p-4 backdrop-blur-md space-y-2">
+          <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
             <Lock className="h-4 w-4" />
           </div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Session Security</h3>
-          <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">Better Auth enforces database-backed session validation and role checks.</p>
+          <h3 className="text-xs font-bold text-slate-900 dark:text-white">Session Security</h3>
+          <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">Better Auth database-backed session validation and cookie cache controls.</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
-          <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300">
+
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/60 p-4 backdrop-blur-md space-y-2">
+          <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
             <FileText className="h-4 w-4" />
           </div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">COPPA Compliance</h3>
-          <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">Guardian consent and youth data access remain gated by role and ownership checks.</p>
+          <h3 className="text-xs font-bold text-slate-900 dark:text-white">COPPA Privacy</h3>
+          <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">Guardian consent and youth athlete profiles remain gated by role boundaries.</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
-          <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/60 p-4 backdrop-blur-md space-y-2">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
             <Key className="h-4 w-4" />
           </div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Access Control</h3>
-          <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">Admins, coaches, and parents each operate within explicitly scoped permissions.</p>
+          <h3 className="text-xs font-bold text-slate-900 dark:text-white">Role Scoping</h3>
+          <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">Admins, coaches, and parents operate within explicitly scoped tenant roles.</p>
         </div>
       </div>
     </div>
   );
 }
+

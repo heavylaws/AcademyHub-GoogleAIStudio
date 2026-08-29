@@ -67,13 +67,14 @@ export default function AssessmentSessionConfig({
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
         <div>
-          <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label htmlFor="studio-select-sport" className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
             Select Sport
           </label>
           <select
+            id="studio-select-sport"
             value={selectedSport}
             onChange={(e) => onSportChange(e.target.value)}
-            className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
+            className="w-full h-11 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-semibold text-xs"
           >
             {Object.keys(sportsConfig).map((sp) => (
               <option key={sp} value={sp}>
@@ -84,13 +85,14 @@ export default function AssessmentSessionConfig({
         </div>
 
         <div>
-          <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label htmlFor="studio-exercise-drill" className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
             Exercise Drill
           </label>
           <select
+            id="studio-exercise-drill"
             value={selectedExercise}
             onChange={(e) => onExerciseChange(e.target.value)}
-            className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
+            className="w-full h-11 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-semibold text-xs"
           >
             {currentSportConfig.exercises.map((ex) => (
               <option key={ex} value={ex}>
@@ -101,13 +103,14 @@ export default function AssessmentSessionConfig({
         </div>
 
         <div>
-          <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label htmlFor="studio-grading-sop" className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
             Grading Rubric SOP
           </label>
           <select
+            id="studio-grading-sop"
             value={selectedSOP}
             onChange={(e) => onSOPChange(e.target.value)}
-            className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
+            className="w-full h-11 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-semibold text-xs"
           >
             {currentSportConfig.sops.map((sop) => (
               <option key={sop} value={sop}>
@@ -118,13 +121,14 @@ export default function AssessmentSessionConfig({
         </div>
 
         <div>
-          <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label htmlFor="studio-assign-athlete" className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
             Assign Athlete Profile
           </label>
           <select
+            id="studio-assign-athlete"
             value={selectedAthlete}
             onChange={(e) => onAthleteChange(e.target.value)}
-            className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-semibold"
+            className="w-full h-11 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-semibold text-xs"
           >
             {sampleAthletes.map((ath) => (
               <option key={ath.id} value={ath.id}>

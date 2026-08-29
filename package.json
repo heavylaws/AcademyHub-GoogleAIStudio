@@ -20,7 +20,7 @@
     "db:validate": "prisma validate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
-    "seed:admin-bootstrap": "tsc prisma/seed.ts --module commonjs --target es2020 --outDir .tmp/prisma-seed --skipLibCheck --esModuleInterop && node .tmp/prisma-seed/seed.js",
+    "seed:admin-bootstrap": "npx tsx prisma/seed.ts",
     "docker:build": "docker build -t academyhub:latest .",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down"

@@ -352,8 +352,9 @@ export default function RapidAssessmentForm({
             <button
               type="button"
               onClick={handleToggleAIPipeline}
+              aria-label={`Toggle AI Pipeline Engine (Currently ${aiPipelineActive ? 'ON' : 'OFF'})`}
               title="Toggle NEXT_PUBLIC_ENABLE_AI_PIPELINE evaluation engine"
-              className={`flex items-center gap-2 px-3 py-1.5 min-h-[44px] rounded-xl border text-xs font-mono font-bold transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-xl border text-xs font-mono font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 active:scale-[0.98] ${
                 aiPipelineActive
                   ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30'
                   : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
@@ -397,7 +398,7 @@ export default function RapidAssessmentForm({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-slate-800/80 text-xs">
           {/* Athlete Selector */}
           <div>
-            <label className="block font-semibold text-slate-300 mb-1.5 flex items-center gap-1">
+            <label htmlFor="rapid-athlete-select" className="block font-bold text-slate-200 mb-1.5 flex items-center gap-1">
               <User className="w-3.5 h-3.5 text-cyan-400" />
               Selected Athlete
             </label>
@@ -405,7 +406,7 @@ export default function RapidAssessmentForm({
               id="rapid-athlete-select"
               value={effectiveSelectedAthleteId}
               onChange={(e) => setSelectedAthleteId(e.target.value)}
-              className="w-full h-11 bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 font-semibold focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+              className="w-full h-11 min-h-[44px] bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-colors text-xs"
             >
               {athletes.map((athlete) => (
                 <option key={athlete.id} value={athlete.id}>
@@ -422,17 +423,17 @@ export default function RapidAssessmentForm({
 
           {/* Sport Selector */}
           <div>
-            <label className="block font-semibold text-slate-300 mb-1.5 flex items-center gap-1">
+            <label htmlFor="rapid-sport-button-group" className="block font-bold text-slate-200 mb-1.5 flex items-center gap-1">
               <Flame className="w-3.5 h-3.5 text-amber-400" />
               Sport Discipline
             </label>
-            <div className="grid grid-cols-4 gap-1">
+            <div id="rapid-sport-button-group" className="grid grid-cols-4 gap-1">
               {SPORTS_OPTIONS.map((sport) => (
                 <button
                   key={sport}
                   type="button"
                   onClick={() => setSelectedSport(sport)}
-                  className={`min-h-[44px] py-2 px-1 rounded-xl text-center font-bold text-[11px] transition-all truncate ${
+                  className={`min-h-[44px] py-2 px-1 rounded-xl text-center font-bold text-[11px] transition-all truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 active:scale-[0.98] ${
                     selectedSport === sport
                       ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
                       : 'bg-slate-950/80 text-slate-300 hover:bg-slate-800 border border-slate-800'
@@ -446,7 +447,7 @@ export default function RapidAssessmentForm({
 
           {/* SOP Exercise Type */}
           <div>
-            <label className="block font-semibold text-slate-300 mb-1.5 flex items-center gap-1">
+            <label htmlFor="rapid-exercise-select" className="block font-bold text-slate-200 mb-1.5 flex items-center gap-1">
               <Layers className="w-3.5 h-3.5 text-purple-400" />
               SOP Exercise Type
             </label>
@@ -457,7 +458,7 @@ export default function RapidAssessmentForm({
                 setSelectedExercise(e.target.value);
                 setSelectedFaults([]); // Reset faults for new drill
               }}
-              className="w-full h-11 bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 font-semibold focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+              className="w-full h-11 min-h-[44px] bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2.5 font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-colors text-xs"
             >
               {EXERCISE_SOPS.map((sop) => (
                 <option key={sop} value={sop}>
